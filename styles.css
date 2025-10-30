@@ -26,19 +26,40 @@ If your plugin does not need CSS, delete this file.
 
 .priority-matrix-grid {
   display: grid;
-  grid-template-columns: 140px 1fr 1fr;
+  grid-template-columns: 260px 1fr 1fr 260px;
   grid-template-rows: auto 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
-.pmx-col-header,
-.pmx-row-header {
+.pmx-col-header {
   font-weight: 600;
   padding: 6px 8px;
 }
 
-.pmx-empty {
-  /* top-left corner cell */
+.pmx-matrix-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  grid-column: 2 / span 2;
+}
+
+.pmx-col-subheader {
+  font-weight: 600;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.pmx-side-col {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-height: 240px;
+  background-color: var(--background-secondary);
+  grid-row: 2 / span 2;
+}
+
+.pmx-side-col-spacer {
+  /* occupies the bottom-row for side columns to complete the grid structure */
 }
 
 .pmx-cell {
@@ -59,3 +80,34 @@ If your plugin does not need CSS, delete this file.
 .pmx-q2 { background-color: color-mix(in srgb, var(--color-yellow) 14%, var(--background-secondary)); }
 .pmx-q3 { background-color: color-mix(in srgb, var(--color-orange) 12%, var(--background-secondary)); }
 .pmx-q4 { background-color: color-mix(in srgb, var(--text-muted) 10%, var(--background-secondary)); }
+
+.pmx-menu-btn {
+  width: 28px;
+  text-align: center;
+}
+
+.pmx-add-help {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Item lists */
+.pmx-list {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.pmx-item {
+  margin: 4px 0;
+}
+
+/* Allow long lists to scroll if needed */
+.pmx-side-col,
+.pmx-cell {
+  overflow: auto;
+}
+
+/* Hide elements when we explicitly mark them from the processor */
+.pmx-hidden {
+  display: none !important;
+}
