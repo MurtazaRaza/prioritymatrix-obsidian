@@ -6,3 +6,56 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+/* Priority Matrix basic visuals */
+.priority-matrix-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.priority-matrix-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.priority-matrix-title {
+  font-weight: 600;
+}
+
+.priority-matrix-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr;
+  grid-template-rows: auto 1fr 1fr;
+  gap: 6px;
+}
+
+.pmx-col-header,
+.pmx-row-header {
+  font-weight: 600;
+  padding: 6px 8px;
+}
+
+.pmx-empty {
+  /* top-left corner cell */
+}
+
+.pmx-cell {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-height: 120px;
+  background-color: var(--background-secondary);
+}
+
+.pmx-cell-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* Subtle quadrant tints */
+.pmx-q1 { background-color: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary)); }
+.pmx-q2 { background-color: color-mix(in srgb, var(--color-yellow) 14%, var(--background-secondary)); }
+.pmx-q3 { background-color: color-mix(in srgb, var(--color-orange) 12%, var(--background-secondary)); }
+.pmx-q4 { background-color: color-mix(in srgb, var(--text-muted) 10%, var(--background-secondary)); }

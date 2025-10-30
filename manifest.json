@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "priority-matrix",
+	"name": "Priority Matrix",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Create and manage priority matrix notes with TODO sourcing.",
+	"author": "",
+	"authorUrl": "",
+	"fundingUrl": "",
 	"isDesktopOnly": false
 }
