@@ -26,8 +26,8 @@ If your plugin does not need CSS, delete this file.
 
 .priority-matrix-grid {
   display: grid;
-  grid-template-columns: 260px 1fr 1fr 260px;
-  grid-template-rows: auto 1fr 1fr;
+  grid-template-columns: 1fr 1fr; /* matrix columns */
+  grid-auto-rows: auto; /* banks and rows stack */
   gap: 8px;
 }
 
@@ -36,11 +36,15 @@ If your plugin does not need CSS, delete this file.
   padding: 6px 8px;
 }
 
+.pmx-col-header button {
+  margin-left: 8px;
+}
+
 .pmx-matrix-header {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  grid-column: 2 / span 2;
+  grid-column: 1 / span 2;
 }
 
 .pmx-col-subheader {
@@ -49,13 +53,17 @@ If your plugin does not need CSS, delete this file.
   text-align: center;
 }
 
-.pmx-side-col {
+.pmx-bank {
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   padding: 6px 8px;
-  min-height: 240px;
+  min-height: 120px;
   background-color: var(--background-secondary);
-  grid-row: 2 / span 2;
+  grid-column: 1 / span 2; /* full width */
+}
+
+.pmx-collapsed {
+  display: none;
 }
 
 .pmx-side-col-spacer {
@@ -94,15 +102,37 @@ If your plugin does not need CSS, delete this file.
 /* Item lists */
 .pmx-list {
   margin: 0;
-  padding-left: 16px;
+  padding: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
 }
 
 .pmx-item {
   margin: 4px 0;
 }
 
+.pmx-bubble {
+  list-style: none;
+  display: inline-block;
+  background: var(--background-primary-alt);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  padding: 6px 10px;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  cursor: grab;
+}
+.pmx-bubble a {
+  text-decoration: none;
+}
+.pmx-bubble:active {
+  cursor: grabbing;
+}
+
 /* Allow long lists to scroll if needed */
-.pmx-side-col,
+.pmx-bank,
 .pmx-cell {
   overflow: auto;
 }
@@ -111,3 +141,5 @@ If your plugin does not need CSS, delete this file.
 .pmx-hidden {
   display: none !important;
 }
+
+/* Additional CSS for hiding markdown sections - JS will add classes */
