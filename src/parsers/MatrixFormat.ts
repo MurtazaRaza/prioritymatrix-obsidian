@@ -41,9 +41,7 @@ export function matrixToMd(matrix: Matrix): string {
     }
     lines.push('');
 
-    // Matrix type heading
-    lines.push('## Matrix type - Eisenhower');
-    lines.push('');
+    // Mount point
     lines.push('```priority-matrix');
     lines.push('```');
     lines.push('');

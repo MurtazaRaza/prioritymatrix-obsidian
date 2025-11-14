@@ -7,7 +7,6 @@ export interface MatrixSettings {
     maxFiles: number;
     autoRemoveTodoOnDone: boolean;
     enableStrikethroughOnDone: boolean;
-    matrixType: 'Eisenhower';
 }
 
 export interface ItemMetadata {

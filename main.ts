@@ -8,7 +8,6 @@ interface PriorityMatrixPluginSettings {
     maxFiles: number; // 0 means unlimited
     autoRemoveTodoOnDone: boolean;
     enableStrikethroughOnDone: boolean; // disabled when autoRemoveTodoOnDone is true
-    matrixType: 'Eisenhower';
 }
 
 const DEFAULT_SETTINGS: PriorityMatrixPluginSettings = {
@@ -18,7 +17,6 @@ const DEFAULT_SETTINGS: PriorityMatrixPluginSettings = {
     maxFiles: 99999,
     autoRemoveTodoOnDone: false,
     enableStrikethroughOnDone: true,
-    matrixType: 'Eisenhower',
 }
 
 export default class PriorityMatrixPlugin extends Plugin {
@@ -96,9 +94,32 @@ export default class PriorityMatrixPlugin extends Plugin {
         }));
 
         // Register markdown post-processor to add switch button and hide code block
+        // Only processes files that are priority matrix notes to avoid conflicts
         this.registerMarkdownPostProcessor((el, ctx) => {
             const file = ctx.sourcePath ? this.app.vault.getAbstractFileByPath(ctx.sourcePath) : null;
-            if (!(file instanceof TFile) || !this.noteHasPriorityMatrixBlock(file)) {
+            if (!(file instanceof TFile)) {
+                return;
+            }
+            
+            // Strict check: only process files with "priority matrix" in name or priority-matrix code block
+            if (!this.noteHasPriorityMatrixBlock(file)) {
+                return;
+            }
+            
+            // Additional content check: verify it actually has priority matrix markers
+            const hasCodeBlock = el.querySelector('pre code.language-priority-matrix, pre code[class*="priority-matrix"]');
+            const headings = el.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            let hasMatrixHeadings = false;
+            for (const heading of Array.from(headings)) {
+                const text = heading.textContent?.toLowerCase() || '';
+                if (text === 'todo' || text === 'q1' || text === 'q2' || text === 'q3' || text === 'q4' || text === 'done') {
+                    hasMatrixHeadings = true;
+                    break;
+                }
+            }
+            
+            // Only proceed if we find actual priority matrix content
+            if (!hasCodeBlock && !hasMatrixHeadings) {
                 return;
             }
 
@@ -200,7 +221,6 @@ export default class PriorityMatrixPlugin extends Plugin {
     private async generateMatrixNoteContent(folder: TFolder): Promise<string> {
         const headings = [
             'TODO',
-            'Matrix type - Eisenhower',
             'Q1',
             'Q2',
             'Q3',
@@ -227,8 +247,7 @@ export default class PriorityMatrixPlugin extends Plugin {
             todoTag: this.settings.todoTag,
             maxFiles: this.settings.maxFiles,
             autoRemoveTodoOnDone: this.settings.autoRemoveTodoOnDone,
-            enableStrikethroughOnDone: this.settings.enableStrikethroughOnDone,
-            matrixType: this.settings.matrixType
+            enableStrikethroughOnDone: this.settings.enableStrikethroughOnDone
         };
 
         const lines: string[] = [];
@@ -240,27 +259,20 @@ export default class PriorityMatrixPlugin extends Plugin {
             if (placeholderTodos.length > 0) lines.push('');
             lines.push(...checklistFromScan);
         }
-        lines.push('');
-        // Matrix type + mount point
+        // Q1-Q4
         lines.push(`## ${headings[1]}`);
         lines.push('');
-        lines.push('```priority-matrix');
-        lines.push('```');
-        lines.push('');
-        // Q1-Q4
         lines.push(`## ${headings[2]}`);
         lines.push('');
         lines.push(`## ${headings[3]}`);
         lines.push('');
         lines.push(`## ${headings[4]}`);
         lines.push('');
+        // DONE
         lines.push(`## ${headings[5]}`);
         lines.push('');
-        // DONE
-        lines.push(`## ${headings[6]}`);
-        lines.push('');
         // Settings JSON block
-        lines.push(`## ${headings[7]}`);
+        lines.push(`## ${headings[6]}`);
         lines.push('');
         lines.push('```json');
         lines.push(JSON.stringify(settingsJson, null, 2));
@@ -310,15 +322,21 @@ export default class PriorityMatrixPlugin extends Plugin {
 
     // Check if the note has a priority matrix block or structure
     private noteHasPriorityMatrixBlock(file: TFile): boolean {
-        // Check file content synchronously if possible, or use metadata cache
-        const cache = this.app.metadataCache.getFileCache(file);
-        if (cache) {
-            // Check for priority-matrix code block in frontmatter or content
-            // For now, check if file has the expected structure
-            return true; // Simplified - could check actual content
+        // Only check files that are likely to be priority matrix notes
+        // This is a quick filter - the post-processor does the actual content check
+        if (file.extension !== 'md') {
+            return false;
         }
-        // Fallback: check if file name suggests it's a matrix
-        return file.name.toLowerCase().includes('priority matrix');
+        
+        // Check if file name suggests it's a matrix
+        if (file.name.toLowerCase().includes('priority matrix')) {
+            return true;
+        }
+        
+        // For other files, we'll let the post-processor check the content
+        // This avoids false positives but may process some files unnecessarily
+        // The post-processor will exit early if it's not a priority matrix file
+        return false; // Only process files with "priority matrix" in the name
     }
 }
 
@@ -403,18 +421,6 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl('h3', { text: 'Matrix' });
-        new Setting(containerEl)
-            .setName('Matrix type')
-            .setDesc('Choose the layout for the matrix')
-            .addDropdown(drop => {
-                drop.addOption('Eisenhower', 'Eisenhower (2×2)');
-                drop.setValue(this.plugin.settings.matrixType);
-                drop.onChange(async (value: 'Eisenhower') => {
-                    this.plugin.settings.matrixType = value;
-                    await this.plugin.saveSettings();
-                });
-            });
     }
 }
 

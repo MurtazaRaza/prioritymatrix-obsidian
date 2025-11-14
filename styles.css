@@ -6,54 +6,54 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
-/* Priority Matrix basic visuals */
-.priority-matrix-container {
+/* Priority Matrix basic visuals - all scoped to avoid conflicts */
+.priority-matrix-view .priority-matrix-container {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.priority-matrix-toolbar {
+.priority-matrix-view .priority-matrix-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.priority-matrix-title {
+.priority-matrix-view .priority-matrix-title {
   font-weight: 600;
 }
 
-.priority-matrix-grid {
+.priority-matrix-view .priority-matrix-grid {
   display: grid;
   grid-template-columns: 1fr 1fr; /* matrix columns */
   grid-auto-rows: auto; /* banks and rows stack */
   gap: 8px;
 }
 
-.pmx-col-header {
+.priority-matrix-view .pmx-col-header {
   font-weight: 600;
   padding: 6px 8px;
 }
 
-.pmx-col-header button {
+.priority-matrix-view .pmx-col-header button {
   margin-left: 8px;
 }
 
-.pmx-matrix-header {
+.priority-matrix-view .pmx-matrix-header {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   grid-column: 1 / span 2;
 }
 
-.pmx-col-subheader {
+.priority-matrix-view .pmx-col-subheader {
   font-weight: 600;
   padding: 6px 8px;
   text-align: center;
 }
 
-.pmx-bank {
+.priority-matrix-view .pmx-bank {
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   padding: 6px 8px;
@@ -62,15 +62,15 @@ If your plugin does not need CSS, delete this file.
   grid-column: 1 / span 2; /* full width */
 }
 
-.pmx-collapsed {
+.priority-matrix-view .pmx-collapsed {
   display: none;
 }
 
-.pmx-side-col-spacer {
+.priority-matrix-view .pmx-side-col-spacer {
   /* occupies the bottom-row for side columns to complete the grid structure */
 }
 
-.pmx-cell {
+.priority-matrix-view .pmx-cell {
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   padding: 6px 8px;
@@ -78,29 +78,29 @@ If your plugin does not need CSS, delete this file.
   background-color: var(--background-secondary);
 }
 
-.pmx-cell-title {
+.priority-matrix-view .pmx-cell-title {
   font-weight: 600;
   margin-bottom: 6px;
 }
 
 /* Subtle quadrant tints */
-.pmx-q1 { background-color: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary)); }
-.pmx-q2 { background-color: color-mix(in srgb, var(--color-yellow) 14%, var(--background-secondary)); }
-.pmx-q3 { background-color: color-mix(in srgb, var(--color-orange) 12%, var(--background-secondary)); }
-.pmx-q4 { background-color: color-mix(in srgb, var(--text-muted) 10%, var(--background-secondary)); }
+.priority-matrix-view .pmx-q1 { background-color: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary)); }
+.priority-matrix-view .pmx-q2 { background-color: color-mix(in srgb, var(--color-yellow) 14%, var(--background-secondary)); }
+.priority-matrix-view .pmx-q3 { background-color: color-mix(in srgb, var(--color-orange) 12%, var(--background-secondary)); }
+.priority-matrix-view .pmx-q4 { background-color: color-mix(in srgb, var(--text-muted) 10%, var(--background-secondary)); }
 
-.pmx-menu-btn {
+.priority-matrix-view .pmx-menu-btn {
   width: 28px;
   text-align: center;
 }
 
-.pmx-add-help {
+.priority-matrix-view .pmx-add-help {
   color: var(--text-muted);
   font-size: 12px;
 }
 
-/* Item lists */
-.pmx-list {
+/* Item lists - scoped to priority matrix */
+.priority-matrix-view .pmx-list {
   margin: 0;
   padding: 4px;
   display: flex;
@@ -109,11 +109,11 @@ If your plugin does not need CSS, delete this file.
   list-style: none;
 }
 
-.pmx-item {
+.priority-matrix-view .pmx-item {
   margin: 4px 0;
 }
 
-.pmx-bubble {
+.priority-matrix-view .pmx-bubble {
   list-style: none;
   display: inline-block;
   background: var(--background-primary-alt);
@@ -132,21 +132,21 @@ If your plugin does not need CSS, delete this file.
 .markdown-preview-view pre:has(code[class*="priority-matrix"]) {
   display: none !important;
 }
-.pmx-bubble a {
+.priority-matrix-view .pmx-bubble a {
   text-decoration: none;
 }
-.pmx-bubble:active {
+.priority-matrix-view .pmx-bubble:active {
   cursor: grabbing;
 }
 
 /* Allow long lists to scroll if needed */
-.pmx-bank,
-.pmx-cell {
+.priority-matrix-view .pmx-bank,
+.priority-matrix-view .pmx-cell {
   overflow: auto;
 }
 
 /* Hide elements when we explicitly mark them from the processor */
-.pmx-hidden {
+.priority-matrix-view .pmx-hidden {
   display: none !important;
 }
 

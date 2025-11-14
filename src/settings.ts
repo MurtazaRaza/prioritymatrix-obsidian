@@ -7,7 +7,6 @@ export const DEFAULT_SETTINGS: MatrixSettings = {
     maxFiles: 99999,
     autoRemoveTodoOnDone: false,
     enableStrikethroughOnDone: true,
-    matrixType: 'Eisenhower',
 };
 
 export function parseSettingsFromJson(jsonStr: string): MatrixSettings {
