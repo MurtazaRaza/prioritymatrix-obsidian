@@ -7,6 +7,7 @@ export class StateManager {
     private file: TFile;
     private state: Matrix | null = null;
     private listeners: Set<() => void> = new Set();
+    private isSaving: boolean = false;
 
     constructor(app: App, file: TFile) {
         this.app = app;
@@ -43,8 +44,22 @@ export class StateManager {
      */
     async save(): Promise<void> {
         if (!this.state) return;
-        const md = matrixToMd(this.state);
-        await this.app.vault.modify(this.file, md);
+        this.isSaving = true;
+        try {
+            const md = matrixToMd(this.state);
+            await this.app.vault.modify(this.file, md);
+            // Brief delay to allow file change event to propagate
+            await new Promise(resolve => setTimeout(resolve, 100));
+        } finally {
+            this.isSaving = false;
+        }
+    }
+
+    /**
+     * Check if we're currently saving (to prevent re-parsing during save)
+     */
+    getIsSaving(): boolean {
+        return this.isSaving;
     }
 
     /**
@@ -65,11 +80,19 @@ export class StateManager {
     }
 
     /**
-     * Move an item from one section to another
+     * Move an item from one section to another (optionally at a specific index)
      */
-    moveItem(itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', to: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done'): void {
+    moveItem(itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', to: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', insertIndex?: number): void {
         if (!this.state) return;
-        if (from === to) return;
+        
+        // Handle reordering within the same section
+        if (from === to) {
+            // Only reorder if insertIndex is provided
+            if (insertIndex !== undefined && insertIndex >= 0) {
+                this.reorderItem(itemId, from, insertIndex);
+            }
+            return;
+        }
 
         // Find the item
         let item: any = null;
@@ -108,17 +131,71 @@ export class StateManager {
             item.data.checked = false;
         }
 
-        // Add to destination
+        // Add to destination at specific index or append
         if (to === 'todo') {
-            this.state.data.banks.todo.push(item);
+            if (insertIndex !== undefined && insertIndex >= 0) {
+                this.state.data.banks.todo.splice(insertIndex, 0, item);
+            } else {
+                this.state.data.banks.todo.push(item);
+            }
         } else if (to === 'done') {
-            this.state.data.banks.done.push(item);
+            if (insertIndex !== undefined && insertIndex >= 0) {
+                this.state.data.banks.done.splice(insertIndex, 0, item);
+            } else {
+                this.state.data.banks.done.push(item);
+            }
         } else {
             const quadrant = this.state.children.find(q => q.id === to);
             if (quadrant) {
-                quadrant.children.push(item);
+                if (insertIndex !== undefined && insertIndex >= 0) {
+                    quadrant.children.splice(insertIndex, 0, item);
+                } else {
+                    quadrant.children.push(item);
+                }
             }
         }
+
+        this.notifyListeners();
+    }
+
+    /**
+     * Reorder an item within the same section
+     */
+    reorderItem(itemId: string, section: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', insertIndex: number): void {
+        if (!this.state) return;
+        if (insertIndex === undefined || insertIndex < 0) return;
+
+        let items: any[] = [];
+        
+        // Get the items array for the section
+        if (section === 'todo') {
+            items = this.state.data.banks.todo;
+        } else if (section === 'done') {
+            items = this.state.data.banks.done;
+        } else {
+            const quadrant = this.state.children.find(q => q.id === section);
+            if (!quadrant) return;
+            items = quadrant.children;
+        }
+
+        // Find current index
+        const currentIndex = items.findIndex(i => i.id === itemId);
+        if (currentIndex === -1) return;
+
+        // Remove item from current position
+        const item = items.splice(currentIndex, 1)[0];
+
+        // Adjust insert index if needed (since we removed an item before it)
+        let adjustedIndex = insertIndex;
+        if (insertIndex > currentIndex) {
+            adjustedIndex = insertIndex - 1;
+        }
+
+        // Clamp to valid range
+        adjustedIndex = Math.max(0, Math.min(adjustedIndex, items.length));
+
+        // Insert at new position
+        items.splice(adjustedIndex, 0, item);
 
         this.notifyListeners();
     }

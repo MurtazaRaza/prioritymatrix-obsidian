@@ -6,9 +6,11 @@ interface TodoBankProps {
     collapsed: boolean;
     onToggleCollapse: () => void;
     onItemClick?: (item: Item) => void;
+    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
+    onDragEnd?: (e: DragEvent) => void;
 }
 
-export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick }: TodoBankProps) {
+export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onDragStart, onDragEnd }: TodoBankProps) {
     return (
         <>
             <div className="pmx-col-header">
@@ -37,10 +39,8 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick }: To
                             className="pmx-item pmx-bubble"
                             draggable={true}
                             data-item-id={item.id}
-                            onDragStart={(e) => {
-                                e.dataTransfer?.setData('text/plain', item.id);
-                                e.dataTransfer?.setData('text/pmx-from', 'todo');
-                            }}
+                            onDragStart={(e) => onDragStart?.(e, item.id, 'todo')}
+                            onDragEnd={onDragEnd}
                             onClick={() => onItemClick?.(item)}
                         >
                             {item.data.metadata.fileAccessor ? (

@@ -6,9 +6,11 @@ interface DoneBankProps {
     collapsed: boolean;
     onToggleCollapse: () => void;
     onItemClick?: (item: Item) => void;
+    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
+    onDragEnd?: (e: DragEvent) => void;
 }
 
-export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick }: DoneBankProps) {
+export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick, onDragStart, onDragEnd }: DoneBankProps) {
     return (
         <>
             <div className="pmx-col-header">
@@ -37,10 +39,8 @@ export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick }: Do
                             className="pmx-item pmx-bubble"
                             draggable={true}
                             data-item-id={item.id}
-                            onDragStart={(e) => {
-                                e.dataTransfer?.setData('text/plain', item.id);
-                                e.dataTransfer?.setData('text/pmx-from', 'done');
-                            }}
+                            onDragStart={(e) => onDragStart?.(e, item.id, 'done')}
+                            onDragEnd={onDragEnd}
                             onClick={() => onItemClick?.(item)}
                         >
                             {item.data.metadata.fileAccessor ? (

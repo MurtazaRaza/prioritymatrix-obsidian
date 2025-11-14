@@ -93,10 +93,6 @@ If your plugin does not need CSS, delete this file.
   display: none;
 }
 
-.priority-matrix-view .pmx-side-col-spacer {
-  /* occupies the bottom-row for side columns to complete the grid structure */
-}
-
 .priority-matrix-view .pmx-cell {
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
@@ -142,14 +138,134 @@ If your plugin does not need CSS, delete this file.
 
 .priority-matrix-view .pmx-bubble {
   list-style: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: var(--background-primary-alt);
   border: 1px solid var(--background-modifier-border);
   color: var(--text-normal);
-  padding: 6px 10px;
+  padding: 6px 10px 6px 8px;
   border-radius: 999px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.08);
   cursor: grab;
+  transition: all 0.2s ease;
+  position: relative;
+  user-select: none;
+}
+
+/* Drag handle grip icon */
+.priority-matrix-view .pmx-bubble::before {
+  content: '⋮⋮';
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-muted);
+  opacity: 0.6;
+  letter-spacing: -2px;
+  display: inline-block;
+  flex-shrink: 0;
+  transform: rotate(90deg);
+  transition: opacity 0.2s ease, color 0.2s ease;
+  margin-right: 4px;
+  font-weight: bold;
+  vertical-align: middle;
+}
+
+/* Hover state - make it look more draggable */
+.priority-matrix-view .pmx-bubble:hover {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 0 0 1px var(--interactive-accent-rgb, rgba(var(--interactive-accent-rgb), 0.2));
+  transform: translateY(-1px);
+  background: var(--background-modifier-hover);
+}
+
+.priority-matrix-view .pmx-bubble:hover::before {
+  opacity: 1;
+  color: var(--interactive-accent);
+}
+
+/* Active/dragging state */
+.priority-matrix-view .pmx-bubble:active,
+.priority-matrix-view .pmx-bubble.dragging {
+  cursor: grabbing;
+  opacity: 0.7;
+  transform: translateY(0px) scale(0.98);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  border-color: var(--interactive-accent);
+}
+
+/* Drop indicators for reordering */
+.priority-matrix-view .pmx-item.pmx-drop-before {
+  position: relative;
+}
+
+/* Drop indicator line above item - overrides grip icon during drag */
+.priority-matrix-view .pmx-item.pmx-drop-before .pmx-bubble::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--interactive-accent);
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--interactive-accent);
+  z-index: 10;
+  opacity: 0.8;
+  pointer-events: none;
+  /* Reset grip icon styles */
+  transform: none;
+  letter-spacing: normal;
+  margin: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
+.priority-matrix-view .pmx-item.pmx-drop-after {
+  position: relative;
+}
+
+/* Drop indicator line below item */
+.priority-matrix-view .pmx-item.pmx-drop-after .pmx-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--interactive-accent);
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--interactive-accent);
+  z-index: 10;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* Visual shift for items that will move when item is inserted */
+.priority-matrix-view .pmx-item.pmx-shift-right {
+  transform: translateX(46px);
+  transition: transform 0.2s ease;
+}
+
+/* Placeholder showing where item will be dropped */
+.priority-matrix-view .pmx-drop-placeholder {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+  transition: all 0.2s ease;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
 }
 
 /* Hide priority-matrix code block in markdown preview */
@@ -161,9 +277,20 @@ If your plugin does not need CSS, delete this file.
 }
 .priority-matrix-view .pmx-bubble a {
   text-decoration: none;
+  color: var(--link-color, var(--link-color-external, var(--interactive-accent)));
+  flex: 1;
+  cursor: pointer;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+  font-weight: 500;
 }
-.priority-matrix-view .pmx-bubble:active {
-  cursor: grabbing;
+
+.priority-matrix-view .pmx-bubble a:hover {
+  color: var(--link-color-hover, var(--link-color-external-hover, var(--interactive-accent)));
+  text-decoration: underline;
+}
+
+.priority-matrix-view .pmx-bubble:hover a {
+  text-decoration: underline;
 }
 
 /* Allow long lists to scroll if needed */

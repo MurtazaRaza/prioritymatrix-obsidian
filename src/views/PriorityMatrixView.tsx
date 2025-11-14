@@ -42,6 +42,24 @@ export class PriorityMatrixView extends TextFileView {
             this.stateManager = new StateManager(this.app, this.file);
         }
 
+        // Skip re-parsing if we're currently saving (prevents overwriting state during save)
+        if (this.stateManager.getIsSaving()) {
+            console.log('[PriorityMatrix] Skipping re-parse during save operation');
+            return;
+        }
+
+        // If we have existing state, check if the incoming data matches what we would generate
+        // This prevents re-parsing (and losing order) when the file change is from our own save
+        const currentState = this.stateManager.getState();
+        if (currentState && !clear) {
+            const { matrixToMd } = await import('../parsers/MatrixFormat');
+            const expectedMd = matrixToMd(currentState);
+            if (data.trim() === expectedMd.trim()) {
+                console.log('[PriorityMatrix] Incoming data matches current state, skipping re-parse');
+                return;
+            }
+        }
+
         // Parse and set state
         const matrix = await this.stateManager.getParsedMatrix(data);
         console.log('[PriorityMatrix] Parsed matrix:', matrix);
