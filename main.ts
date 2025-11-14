@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: PriorityMatrixPluginSettings = {
 
 export default class PriorityMatrixPlugin extends Plugin {
     settings: PriorityMatrixPluginSettings;
+    private pendingMatrixFiles = new Set<string>();
 
     async onload() {
         await this.loadSettings();
@@ -46,9 +47,15 @@ export default class PriorityMatrixPlugin extends Plugin {
             name: 'Open as matrix',
             checkCallback: (checking) => {
                 const file = this.app.workspace.getActiveFile();
-                const can = !!file && this.noteHasPriorityMatrixBlock(file);
-                if (!checking && can) {
-                    this.openAsMatrixView(file);
+                // Quick synchronous check (filename only for availability)
+                const can = !!file && file.extension === 'md';
+                if (!checking && can && file) {
+                    // Do full async check and open if valid
+                    this.noteHasPriorityMatrixBlock(file).then(isMatrix => {
+                        if (isMatrix) {
+                            this.openAsMatrixView(file);
+                        }
+                    });
                 }
                 return can;
             }
@@ -60,9 +67,15 @@ export default class PriorityMatrixPlugin extends Plugin {
             name: 'Switch to matrix view',
             checkCallback: (checking) => {
                 const file = this.app.workspace.getActiveFile();
-                const can = !!file && this.noteHasPriorityMatrixBlock(file);
-                if (!checking && can) {
-                    this.openAsMatrixView(file);
+                // Quick synchronous check (filename only for availability)
+                const can = !!file && file.extension === 'md';
+                if (!checking && can && file) {
+                    // Do full async check and open if valid
+                    this.noteHasPriorityMatrixBlock(file).then(isMatrix => {
+                        if (isMatrix) {
+                            this.openAsMatrixView(file);
+                        }
+                    });
                 }
                 return can;
             }
@@ -101,8 +114,9 @@ export default class PriorityMatrixPlugin extends Plugin {
                 return;
             }
             
-            // Strict check: only process files with "priority matrix" in name or priority-matrix code block
-            if (!this.noteHasPriorityMatrixBlock(file)) {
+            // Quick filter: only process markdown files
+            // Content check happens below
+            if (file.extension !== 'md') {
                 return;
             }
             
@@ -150,12 +164,43 @@ export default class PriorityMatrixPlugin extends Plugin {
             }
         });
 
-        // When a file is opened, check if it should be opened as matrix view
+        // When a file is opened, mark it for matrix view if needed
         this.registerEvent(
             this.app.workspace.on('file-open', async (file: TFile) => {
-                if (file && this.noteHasPriorityMatrixBlock(file)) {
-                    // Optionally auto-open as matrix view
-                    // For now, user can use command to switch
+                if (!file || file.extension !== 'md') return;
+                
+                // Quick synchronous check first (filename)
+                const quickCheck = file.name.toLowerCase().includes('priority matrix');
+                
+                if (quickCheck) {
+                    this.pendingMatrixFiles.add(file.path);
+                    return;
+                }
+                
+                // For other files, do async content check
+                const isMatrixFile = await this.noteHasPriorityMatrixBlock(file);
+                if (isMatrixFile) {
+                    this.pendingMatrixFiles.add(file.path);
+                }
+            })
+        );
+        
+        // When a leaf becomes active, check if it should be matrix view
+        this.registerEvent(
+            this.app.workspace.on('active-leaf-change', async (leaf) => {
+                if (!leaf || !leaf.view) return;
+                
+                const view = leaf.view;
+                const file = view instanceof MarkdownView ? view.file : null;
+                if (!file || !this.pendingMatrixFiles.has(file.path)) return;
+                
+                // Only switch if it's currently a markdown view
+                if (view.getViewType() === 'markdown') {
+                    this.pendingMatrixFiles.delete(file.path);
+                    await leaf.setViewState({
+                        type: VIEW_TYPE_PRIORITY_MATRIX,
+                        state: { file: file.path },
+                    });
                 }
             })
         );
@@ -321,22 +366,28 @@ export default class PriorityMatrixPlugin extends Plugin {
     }
 
     // Check if the note has a priority matrix block or structure
-    private noteHasPriorityMatrixBlock(file: TFile): boolean {
-        // Only check files that are likely to be priority matrix notes
-        // This is a quick filter - the post-processor does the actual content check
+    private async noteHasPriorityMatrixBlock(file: TFile): Promise<boolean> {
+        // Only check markdown files
         if (file.extension !== 'md') {
             return false;
         }
         
-        // Check if file name suggests it's a matrix
+        // Quick check: file name suggests it's a matrix
         if (file.name.toLowerCase().includes('priority matrix')) {
             return true;
         }
         
-        // For other files, we'll let the post-processor check the content
-        // This avoids false positives but may process some files unnecessarily
-        // The post-processor will exit early if it's not a priority matrix file
-        return false; // Only process files with "priority matrix" in the name
+        // Content check: read the file and check for priority matrix markers
+        try {
+            const content = await this.app.vault.read(file);
+            // Check for priority-matrix code block, frontmatter, or section headings
+            return content.includes('```priority-matrix') || 
+                   content.includes('priority-matrix-plugin:') ||
+                   /^##\s+(TODO|Q1|Q2|Q3|Q4|DONE)/m.test(content);
+        } catch (error) {
+            // If we can't read the file, fall back to filename check
+            return false;
+        }
     }
 }
 
@@ -427,3 +478,4 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
 function escapeRegExp(s: string): string {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+

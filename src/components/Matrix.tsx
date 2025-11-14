@@ -20,10 +20,11 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
 
     const handleItemClick = useCallback((item: Item) => {
         if (item.data.metadata.fileAccessor) {
+            // Open in a new tab (newLeaf = true) so the priority matrix stays open
             app.workspace.openLinkText(
                 item.data.metadata.fileAccessor.path,
                 '',
-                false
+                true
             );
         }
     }, [app]);
@@ -74,6 +75,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             </div>
             <div className="priority-matrix-grid">
                 <div
+                    className="pmx-bank-wrapper"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, 'todo')}
                 >
@@ -110,7 +112,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                                 onClick={() => handleItemClick(item)}
                             >
                                 {item.data.metadata.fileAccessor ? (
-                                    <a href="#" onClick={(e) => { e.preventDefault(); handleItemClick(item); }}>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleItemClick(item); }}>
                                         {item.data.title}
                                     </a>
                                 ) : (
@@ -141,7 +143,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                                 onClick={() => handleItemClick(item)}
                             >
                                 {item.data.metadata.fileAccessor ? (
-                                    <a href="#" onClick={(e) => { e.preventDefault(); handleItemClick(item); }}>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleItemClick(item); }}>
                                         {item.data.title}
                                     </a>
                                 ) : (
@@ -172,7 +174,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                                 onClick={() => handleItemClick(item)}
                             >
                                 {item.data.metadata.fileAccessor ? (
-                                    <a href="#" onClick={(e) => { e.preventDefault(); handleItemClick(item); }}>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleItemClick(item); }}>
                                         {item.data.title}
                                     </a>
                                 ) : (
@@ -203,7 +205,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                                 onClick={() => handleItemClick(item)}
                             >
                                 {item.data.metadata.fileAccessor ? (
-                                    <a href="#" onClick={(e) => { e.preventDefault(); handleItemClick(item); }}>
+                                    <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleItemClick(item); }}>
                                         {item.data.title}
                                     </a>
                                 ) : (
@@ -215,6 +217,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                 </div>
 
                 <div
+                    className="pmx-bank-wrapper"
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, 'done')}
                 >

@@ -40,6 +40,30 @@ If your plugin does not need CSS, delete this file.
   margin-left: 8px;
 }
 
+.priority-matrix-view .pmx-collapse-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 20px;
+  border-radius: 3px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.priority-matrix-view .pmx-collapse-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.priority-matrix-view .pmx-collapse-btn svg {
+  display: block;
+}
+
 .priority-matrix-view .pmx-matrix-header {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -53,13 +77,16 @@ If your plugin does not need CSS, delete this file.
   text-align: center;
 }
 
+.priority-matrix-view .pmx-bank-wrapper {
+  grid-column: 1 / span 2; /* full width */
+}
+
 .priority-matrix-view .pmx-bank {
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   padding: 6px 8px;
   min-height: 120px;
   background-color: var(--background-secondary);
-  grid-column: 1 / span 2; /* full width */
 }
 
 .priority-matrix-view .pmx-collapsed {
