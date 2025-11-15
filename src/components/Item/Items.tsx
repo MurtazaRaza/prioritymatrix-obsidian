@@ -5,15 +5,25 @@ import { ItemComponent } from './Item';
 interface ItemsProps {
     items: Item[];
     onItemClick?: (item: Item) => void;
+    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
+    onDragEnd?: (e: DragEvent) => void;
+    from?: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done';
 }
 
-export function Items({ items, onItemClick }: ItemsProps) {
+export function Items({ items, onItemClick, onDragStart, onDragEnd, from }: ItemsProps) {
     return (
-        <ul className="pmx-list">
+        <div className="pmx-list">
             {items.map((item) => (
-                <ItemComponent key={item.id} item={item} onItemClick={onItemClick} />
+                <ItemComponent
+                    key={item.id}
+                    item={item}
+                    onItemClick={onItemClick}
+                    onDragStart={onDragStart}
+                    onDragEnd={onDragEnd}
+                    from={from}
+                />
             ))}
-        </ul>
+        </div>
     );
 }
 

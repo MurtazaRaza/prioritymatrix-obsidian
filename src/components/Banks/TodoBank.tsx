@@ -1,5 +1,6 @@
 import { h, Fragment } from 'preact';
 import { Item } from '../../types';
+import { Items } from '../Item/Items';
 
 interface TodoBankProps {
     items: Item[];
@@ -32,27 +33,15 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onDr
                 </button>
             </div>
             <div className={`pmx-bank pmx-todo ${collapsed ? 'pmx-collapsed' : ''}`}>
-                <ul className="pmx-list">
-                    {items.map((item) => (
-                        <li
-                            key={item.id}
-                            className="pmx-item pmx-bubble"
-                            draggable={true}
-                            data-item-id={item.id}
-                            onDragStart={(e) => onDragStart?.(e, item.id, 'todo')}
-                            onDragEnd={onDragEnd}
-                            onClick={() => onItemClick?.(item)}
-                        >
-                            {item.data.metadata.fileAccessor ? (
-                                <a href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onItemClick?.(item); }}>
-                                    {item.data.title}
-                                </a>
-                            ) : (
-                                <span>{item.data.title}</span>
-                            )}
-                        </li>
-                    ))}
-                </ul>
+                <div className="pmx-cell-items-wrapper">
+                    <Items
+                        items={items}
+                        onItemClick={onItemClick}
+                        onDragStart={onDragStart}
+                        onDragEnd={onDragEnd}
+                        from="todo"
+                    />
+                </div>
             </div>
         </>
     );

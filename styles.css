@@ -83,10 +83,13 @@ If your plugin does not need CSS, delete this file.
 
 .priority-matrix-view .pmx-bank {
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  padding: 6px 8px;
+  border-radius: var(--input-radius);
+  padding: 0;
   min-height: 120px;
   background-color: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .priority-matrix-view .pmx-collapsed {
@@ -95,22 +98,29 @@ If your plugin does not need CSS, delete this file.
 
 .priority-matrix-view .pmx-cell {
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  padding: 6px 8px;
+  border-radius: var(--input-radius);
+  padding: 0;
   min-height: 120px;
   background-color: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .priority-matrix-view .pmx-cell-title {
   font-weight: 600;
-  margin-bottom: 6px;
+  padding: 6px 8px;
+  margin: 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background-color: var(--background-secondary);
 }
 
-/* Subtle quadrant tints */
-.priority-matrix-view .pmx-q1 { background-color: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary)); }
-.priority-matrix-view .pmx-q2 { background-color: color-mix(in srgb, var(--color-yellow) 14%, var(--background-secondary)); }
-.priority-matrix-view .pmx-q3 { background-color: color-mix(in srgb, var(--color-orange) 12%, var(--background-secondary)); }
-.priority-matrix-view .pmx-q4 { background-color: color-mix(in srgb, var(--text-muted) 10%, var(--background-secondary)); }
+.priority-matrix-view .pmx-cell-items-wrapper {
+  margin: 4px;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+}
 
 .priority-matrix-view .pmx-menu-btn {
   width: 28px;
@@ -126,35 +136,68 @@ If your plugin does not need CSS, delete this file.
 .priority-matrix-view .pmx-list {
   margin: 0;
   padding: 4px;
+  margin-inline: 4px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   list-style: none;
 }
 
-.priority-matrix-view .pmx-item {
-  margin: 4px 0;
+.priority-matrix-view .pmx-list > div {
+  margin-block-start: 0;
 }
 
-.priority-matrix-view .pmx-bubble {
-  list-style: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--background-primary-alt);
+/* Item wrapper - allows items to wrap content */
+.priority-matrix-view .pmx-item-wrapper {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: 4px;
+}
+
+/* Individual item card */
+.priority-matrix-view .pmx-item {
+  font-size: 0.875rem;
   border: 1px solid var(--background-modifier-border);
-  color: var(--text-normal);
-  padding: 6px 10px 6px 8px;
-  border-radius: 999px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  border-radius: var(--input-radius);
+  overflow: hidden;
+  transition: 300ms opacity cubic-bezier(0.25, 1, 0.5, 1), border-color 0.15s ease, background-color 0.15s ease;
   cursor: grab;
-  transition: all 0.2s ease;
+  display: inline-block;
+  width: fit-content;
+  min-width: 0;
+}
+
+.priority-matrix-view .pmx-item:hover {
+  border-color: var(--interactive-accent);
+  background-color: var(--background-modifier-hover);
+}
+
+.priority-matrix-view .pmx-item:active,
+.priority-matrix-view .pmx-item.dragging {
+  cursor: grabbing;
+  opacity: 0.7;
+}
+
+/* Item content wrapper */
+.priority-matrix-view .pmx-item-content-wrapper {
+  background: var(--background-primary);
+}
+
+/* Item title wrapper */
+.priority-matrix-view .pmx-item-title-wrapper {
+  background: var(--background-primary);
+  display: flex;
+  padding-block: 4px;
+  padding-inline: 8px;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
   position: relative;
-  user-select: none;
 }
 
 /* Drag handle grip icon */
-.priority-matrix-view .pmx-bubble::before {
+.priority-matrix-view .pmx-item-title-wrapper::before {
   content: '⋮⋮';
   font-size: 11px;
   line-height: 1;
@@ -170,36 +213,74 @@ If your plugin does not need CSS, delete this file.
   vertical-align: middle;
 }
 
-/* Hover state - make it look more draggable */
-.priority-matrix-view .pmx-bubble:hover {
-  border-color: var(--interactive-accent);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 0 0 1px var(--interactive-accent-rgb, rgba(var(--interactive-accent-rgb), 0.2));
-  transform: translateY(-1px);
-  background: var(--background-modifier-hover);
-}
-
-.priority-matrix-view .pmx-bubble:hover::before {
+.priority-matrix-view .pmx-item:hover .pmx-item-title-wrapper::before {
   opacity: 1;
   color: var(--interactive-accent);
 }
 
-/* Active/dragging state */
-.priority-matrix-view .pmx-bubble:active,
-.priority-matrix-view .pmx-bubble.dragging {
-  cursor: grabbing;
-  opacity: 0.7;
-  transform: translateY(0px) scale(0.98);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  border-color: var(--interactive-accent);
+/* Item title */
+.priority-matrix-view .pmx-item-title {
+  line-height: var(--line-height-tight);
+  margin-block-start: 1px;
+  flex: 0 1 auto;
+  color: var(--link-color, var(--link-color-external, var(--interactive-accent)));
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.priority-matrix-view .pmx-item-title a {
+  color: var(--link-color, var(--link-color-external, var(--interactive-accent)));
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.priority-matrix-view .pmx-item-title:hover,
+.priority-matrix-view .pmx-item-title a:hover {
+  color: var(--link-color-hover, var(--link-color-external-hover, var(--interactive-accent)));
+  text-decoration: underline;
+}
+
+/* Item menu button */
+.priority-matrix-view .pmx-item-menu-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 20px;
+  border-radius: 3px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.priority-matrix-view .pmx-item:hover .pmx-item-menu-btn {
+  opacity: 1;
+}
+
+.priority-matrix-view .pmx-item-menu-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.priority-matrix-view .pmx-item-menu-btn svg {
+  display: block;
+  width: 16px;
+  height: 16px;
 }
 
 /* Drop indicators for reordering */
-.priority-matrix-view .pmx-item.pmx-drop-before {
+.priority-matrix-view .pmx-item-wrapper.pmx-drop-before {
   position: relative;
 }
 
-/* Drop indicator line above item - overrides grip icon during drag */
-.priority-matrix-view .pmx-item.pmx-drop-before .pmx-bubble::before {
+/* Drop indicator line above item */
+.priority-matrix-view .pmx-item-wrapper.pmx-drop-before::before {
   content: '';
   position: absolute;
   top: -4px;
@@ -212,20 +293,14 @@ If your plugin does not need CSS, delete this file.
   z-index: 10;
   opacity: 0.8;
   pointer-events: none;
-  /* Reset grip icon styles */
-  transform: none;
-  letter-spacing: normal;
-  margin: 0;
-  font-size: 0;
-  line-height: 0;
 }
 
-.priority-matrix-view .pmx-item.pmx-drop-after {
+.priority-matrix-view .pmx-item-wrapper.pmx-drop-after {
   position: relative;
 }
 
 /* Drop indicator line below item */
-.priority-matrix-view .pmx-item.pmx-drop-after .pmx-bubble::after {
+.priority-matrix-view .pmx-item-wrapper.pmx-drop-after::after {
   content: '';
   position: absolute;
   bottom: -4px;
@@ -241,18 +316,19 @@ If your plugin does not need CSS, delete this file.
 }
 
 /* Visual shift for items that will move when item is inserted */
-.priority-matrix-view .pmx-item.pmx-shift-right {
+.priority-matrix-view .pmx-item-wrapper.pmx-shift-right {
   transform: translateX(46px);
   transition: transform 0.2s ease;
 }
 
 /* Placeholder showing where item will be dropped */
 .priority-matrix-view .pmx-drop-placeholder {
-  list-style: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   margin: 4px 0;
+  height: 40px;
+  border: 2px dashed var(--interactive-accent);
+  border-radius: var(--input-radius);
+  background: var(--interactive-accent);
+  opacity: 0.3;
   transition: all 0.2s ease;
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -266,24 +342,6 @@ If your plugin does not need CSS, delete this file.
     opacity: 0.5;
     transform: scale(1.05);
   }
-}
-
-.priority-matrix-view .pmx-bubble a {
-  text-decoration: none;
-  color: var(--link-color, var(--link-color-external, var(--interactive-accent)));
-  flex: 1;
-  cursor: pointer;
-  transition: color 0.2s ease, text-decoration 0.2s ease;
-  font-weight: 500;
-}
-
-.priority-matrix-view .pmx-bubble a:hover {
-  color: var(--link-color-hover, var(--link-color-external-hover, var(--interactive-accent)));
-  text-decoration: underline;
-}
-
-.priority-matrix-view .pmx-bubble:hover a {
-  text-decoration: underline;
 }
 
 /* Allow long lists to scroll if needed */

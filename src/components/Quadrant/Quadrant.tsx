@@ -5,13 +5,23 @@ import { Items } from '../Item/Items';
 interface QuadrantProps {
     quadrant: QuadrantType;
     onItemClick?: (item: Item) => void;
+    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
+    onDragEnd?: (e: DragEvent) => void;
 }
 
-export function Quadrant({ quadrant, onItemClick }: QuadrantProps) {
+export function Quadrant({ quadrant, onItemClick, onDragStart, onDragEnd }: QuadrantProps) {
     return (
         <div className={`pmx-cell pmx-${quadrant.id}`}>
             <div className="pmx-cell-title">{quadrant.data.title}</div>
-            <Items items={quadrant.children} onItemClick={onItemClick} />
+            <div className="pmx-cell-items-wrapper">
+                <Items
+                    items={quadrant.children}
+                    onItemClick={onItemClick}
+                    onDragStart={onDragStart}
+                    onDragEnd={onDragEnd}
+                    from={quadrant.id as 'q1' | 'q2' | 'q3' | 'q4'}
+                />
+            </div>
         </div>
     );
 }
