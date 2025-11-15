@@ -148,6 +148,21 @@ export class PriorityMatrixView extends TextFileView {
     onload(): void {
         console.log('[PriorityMatrix] onload() called', { file: this.file?.path });
         super.onload();
+        
+        // Add header action buttons
+        this.addAction('refresh-cw', 'Refresh TODOs', async () => {
+            await this.refreshTodos();
+        });
+        
+        this.addAction('file-text', 'Open as Markdown', async () => {
+            if (this.file) {
+                this.app.workspace.getLeaf(true).setViewState({
+                    type: 'markdown',
+                    state: { file: this.file.path },
+                });
+            }
+        });
+        
         // Load data when view loads
         if (this.file) {
             console.log('[PriorityMatrix] Reading file in onload()');

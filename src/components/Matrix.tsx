@@ -7,7 +7,6 @@ import { DoneBank } from './Banks/DoneBank';
 import { Items } from './Item/Items';
 import { StateManager } from '../state/StateManager';
 import { App } from 'obsidian';
-import { PriorityMatrixView } from '../views/PriorityMatrixView';
 
 interface MatrixProps {
     matrix: MatrixType | null;
@@ -237,27 +236,6 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         <div className="priority-matrix-container">
             <div className="priority-matrix-toolbar">
                 <div className="priority-matrix-title">Eisenhower Matrix</div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={async () => {
-                        // Refresh TODO items
-                        const view = app.workspace.getActiveViewOfType(PriorityMatrixView);
-                        if (view && view.file) {
-                            await view.refreshTodos();
-                        }
-                    }}>
-                        Refresh TODOs
-                    </button>
-                    <button onClick={async () => {
-                        // Switch to markdown view
-                        const file = matrix.id;
-                        app.workspace.getLeaf(true).setViewState({
-                            type: 'markdown',
-                            state: { file },
-                        });
-                    }}>
-                        Open as markdown
-                    </button>
-                </div>
             </div>
             <div className="priority-matrix-grid">
                 <div
@@ -273,6 +251,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                         onItemClick={handleItemClick}
                         onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
+                        stateManager={stateManager}
                     />
                 </div>
                 

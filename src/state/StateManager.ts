@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import { Matrix } from '../types';
+import { Matrix, Item } from '../types';
 import { mdToMatrix, matrixToMd } from '../parsers/MatrixFormat';
 
 export class StateManager {
@@ -215,6 +215,55 @@ export class StateManager {
 
         // Insert at new position
         items.splice(adjustedIndex, 0, item);
+
+        this.notifyListeners();
+    }
+
+    /**
+     * Add a new item to a section
+     */
+    addItem(text: string, section: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', insertIndex?: number): void {
+        if (!this.state) return;
+        
+        // Create a unique ID for the item (use timestamp + text hash)
+        const itemId = `item-${Date.now()}-${text.slice(0, 20).replace(/\s+/g, '-')}`;
+        
+        // Create the item
+        const item: Item = {
+            id: itemId,
+            data: {
+                title: text.trim(),
+                titleRaw: text.trim(), // Plain text, not a wikilink
+                checked: section === 'done',
+                metadata: {
+                    // No fileAccessor - this is a plain text item
+                },
+            },
+        };
+
+        // Add to the appropriate section
+        if (section === 'todo') {
+            if (insertIndex !== undefined && insertIndex >= 0) {
+                this.state.data.banks.todo.splice(insertIndex, 0, item);
+            } else {
+                this.state.data.banks.todo.push(item);
+            }
+        } else if (section === 'done') {
+            if (insertIndex !== undefined && insertIndex >= 0) {
+                this.state.data.banks.done.splice(insertIndex, 0, item);
+            } else {
+                this.state.data.banks.done.push(item);
+            }
+        } else {
+            const quadrant = this.state.children.find(q => q.id === section);
+            if (quadrant) {
+                if (insertIndex !== undefined && insertIndex >= 0) {
+                    quadrant.children.splice(insertIndex, 0, item);
+                } else {
+                    quadrant.children.push(item);
+                }
+            }
+        }
 
         this.notifyListeners();
     }

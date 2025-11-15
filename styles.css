@@ -223,22 +223,25 @@ If your plugin does not need CSS, delete this file.
   line-height: var(--line-height-tight);
   margin-block-start: 1px;
   flex: 0 1 auto;
-  color: var(--link-color, var(--link-color-external, var(--interactive-accent)));
-  text-decoration: none;
-  cursor: pointer;
   white-space: nowrap;
 }
 
-.priority-matrix-view .pmx-item-title a {
+/* Item title as link (when fileAccessor exists - it's an anchor tag) */
+.priority-matrix-view .pmx-item-title[href] {
   color: var(--link-color, var(--link-color-external, var(--interactive-accent)));
   text-decoration: none;
   cursor: pointer;
 }
 
-.priority-matrix-view .pmx-item-title:hover,
-.priority-matrix-view .pmx-item-title a:hover {
+.priority-matrix-view .pmx-item-title[href]:hover {
   color: var(--link-color-hover, var(--link-color-external-hover, var(--interactive-accent)));
   text-decoration: underline;
+}
+
+/* Item title as plain text (when no fileAccessor - it's a div, not an anchor) */
+.priority-matrix-view .pmx-item-title:not([href]) {
+  color: var(--text-normal);
+  cursor: default;
 }
 
 /* Item menu button */
