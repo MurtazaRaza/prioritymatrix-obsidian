@@ -20,15 +20,16 @@ export function mdToMatrix(md: string, app: App, filePath: string): Matrix {
 export function matrixToMd(matrix: Matrix): string {
     const lines: string[] = [];
 
-    // Frontmatter (if any)
-    if (Object.keys(matrix.data.frontmatter).length > 0) {
-        lines.push('---');
-        for (const [key, value] of Object.entries(matrix.data.frontmatter)) {
-            lines.push(`${key}: ${JSON.stringify(value)}`);
-        }
-        lines.push('---');
-        lines.push('');
+    // Frontmatter - always include do-not-delete marker
+    const frontmatter = { ...matrix.data.frontmatter };
+    frontmatter['do-not-delete'] = 'priority-matrix-plugin';
+    
+    lines.push('---');
+    for (const [key, value] of Object.entries(frontmatter)) {
+        lines.push(`${key}: ${JSON.stringify(value)}`);
     }
+    lines.push('---');
+    lines.push('');
 
     // TODO section
     lines.push('## TODO');
@@ -39,11 +40,6 @@ export function matrixToMd(matrix: Matrix): string {
     if (matrix.data.banks.todo.length === 0) {
         lines.push('');
     }
-    lines.push('');
-
-    // Mount point
-    lines.push('```priority-matrix');
-    lines.push('```');
     lines.push('');
 
     // Quadrants

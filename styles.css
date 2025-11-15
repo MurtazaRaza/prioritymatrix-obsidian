@@ -268,13 +268,6 @@ If your plugin does not need CSS, delete this file.
   }
 }
 
-/* Hide priority-matrix code block in markdown preview */
-.markdown-preview-view pre code.language-priority-matrix,
-.markdown-preview-view pre code[class*="priority-matrix"],
-.markdown-preview-view pre:has(code.language-priority-matrix),
-.markdown-preview-view pre:has(code[class*="priority-matrix"]) {
-  display: none !important;
-}
 .priority-matrix-view .pmx-bubble a {
   text-decoration: none;
   color: var(--link-color, var(--link-color-external, var(--interactive-accent)));

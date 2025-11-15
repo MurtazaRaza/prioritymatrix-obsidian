@@ -121,7 +121,6 @@ export default class PriorityMatrixPlugin extends Plugin {
             }
             
             // Additional content check: verify it actually has priority matrix markers
-            const hasCodeBlock = el.querySelector('pre code.language-priority-matrix, pre code[class*="priority-matrix"]');
             const headings = el.querySelectorAll('h1, h2, h3, h4, h5, h6');
             let hasMatrixHeadings = false;
             for (const heading of Array.from(headings)) {
@@ -133,18 +132,9 @@ export default class PriorityMatrixPlugin extends Plugin {
             }
             
             // Only proceed if we find actual priority matrix content
-            if (!hasCodeBlock && !hasMatrixHeadings) {
+            if (!hasMatrixHeadings) {
                 return;
             }
-
-            // Hide the priority-matrix code block
-            const codeBlocks = el.querySelectorAll('pre code.language-priority-matrix, pre code[class*="priority-matrix"]');
-            codeBlocks.forEach((code) => {
-                const pre = code.closest('pre');
-                if (pre) {
-                    pre.style.display = 'none';
-                }
-            });
 
             // Add a button at the top to switch to matrix view
             const firstHeading = el.querySelector('h1, h2, h3, h4, h5, h6');
@@ -188,18 +178,56 @@ export default class PriorityMatrixPlugin extends Plugin {
         // When a leaf becomes active, check if it should be matrix view
         this.registerEvent(
             this.app.workspace.on('active-leaf-change', async (leaf) => {
-                if (!leaf || !leaf.view) return;
+                if (!leaf || !leaf.view) {
+                    console.log('[PriorityMatrix] active-leaf-change: no leaf or view');
+                    return;
+                }
                 
                 const view = leaf.view;
+                const viewType = view.getViewType();
+                console.log('[PriorityMatrix] active-leaf-change event', {
+                    viewType,
+                    isPriorityMatrixView: view instanceof PriorityMatrixView,
+                    file: view instanceof MarkdownView ? view.file?.path : null
+                });
+                
+                // Don't interfere if it's already a priority matrix view
+                if (view instanceof PriorityMatrixView) {
+                    console.log('[PriorityMatrix] active-leaf-change: already PriorityMatrixView, skipping');
+                    return;
+                }
+                
                 const file = view instanceof MarkdownView ? view.file : null;
-                if (!file || !this.pendingMatrixFiles.has(file.path)) return;
+                if (!file) {
+                    console.log('[PriorityMatrix] active-leaf-change: no file');
+                    return;
+                }
+                
+                const isPending = this.pendingMatrixFiles.has(file.path);
+                console.log('[PriorityMatrix] active-leaf-change: checking pending files', {
+                    filePath: file.path,
+                    isPending,
+                    pendingFiles: Array.from(this.pendingMatrixFiles)
+                });
+                
+                if (!isPending) {
+                    return;
+                }
                 
                 // Only switch if it's currently a markdown view
-                if (view.getViewType() === 'markdown') {
+                if (viewType === 'markdown') {
+                    console.log('[PriorityMatrix] active-leaf-change: switching to matrix view', {
+                        filePath: file.path
+                    });
                     this.pendingMatrixFiles.delete(file.path);
                     await leaf.setViewState({
                         type: VIEW_TYPE_PRIORITY_MATRIX,
                         state: { file: file.path },
+                    });
+                    console.log('[PriorityMatrix] active-leaf-change: view state changed to matrix');
+                } else {
+                    console.log('[PriorityMatrix] active-leaf-change: not markdown view, not switching', {
+                        viewType
                     });
                 }
             })
@@ -296,6 +324,11 @@ export default class PriorityMatrixPlugin extends Plugin {
         };
 
         const lines: string[] = [];
+        // Frontmatter with do-not-delete marker
+        lines.push('---');
+        lines.push('do-not-delete: "priority-matrix-plugin"');
+        lines.push('---');
+        lines.push('');
         // TODO
         lines.push(`## ${headings[0]}`);
         lines.push('');
@@ -380,9 +413,8 @@ export default class PriorityMatrixPlugin extends Plugin {
         // Content check: read the file and check for priority matrix markers
         try {
             const content = await this.app.vault.read(file);
-            // Check for priority-matrix code block, frontmatter, or section headings
-            return content.includes('```priority-matrix') || 
-                   content.includes('priority-matrix-plugin:') ||
+            // Check for frontmatter marker or section headings
+            return (content.includes('do-not-delete:') && content.includes('priority-matrix-plugin')) ||
                    /^##\s+(TODO|Q1|Q2|Q3|Q4|DONE)/m.test(content);
         } catch (error) {
             // If we can't read the file, fall back to filename check

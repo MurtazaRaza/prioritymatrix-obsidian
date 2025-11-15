@@ -43,15 +43,34 @@ export class StateManager {
      * Save matrix to file
      */
     async save(): Promise<void> {
-        if (!this.state) return;
+        const stackTrace = new Error().stack;
+        console.log('[PriorityMatrix] StateManager.save() called', {
+            file: this.file.path,
+            hasState: !!this.state,
+            stackTrace: stackTrace?.split('\n').slice(1, 5).join('\n')
+        });
+
+        if (!this.state) {
+            console.log('[PriorityMatrix] StateManager.save() aborted - no state');
+            return;
+        }
+
         this.isSaving = true;
         try {
             const md = matrixToMd(this.state);
+            console.log('[PriorityMatrix] StateManager.save() modifying file', {
+                file: this.file.path,
+                mdLength: md.length,
+                mdPreview: md.substring(0, 200)
+            });
             await this.app.vault.modify(this.file, md);
+            console.log('[PriorityMatrix] StateManager.save() file modified, waiting 100ms');
             // Brief delay to allow file change event to propagate
             await new Promise(resolve => setTimeout(resolve, 100));
+            console.log('[PriorityMatrix] StateManager.save() delay completed, setting isSaving=false');
         } finally {
             this.isSaving = false;
+            console.log('[PriorityMatrix] StateManager.save() completed');
         }
     }
 
