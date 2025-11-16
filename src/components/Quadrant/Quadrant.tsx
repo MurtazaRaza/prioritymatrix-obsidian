@@ -1,15 +1,19 @@
 import { h } from 'preact';
 import { Quadrant as QuadrantType, Item } from '../../types';
 import { Items } from '../Item/Items';
+import { StateManager } from '../../state/StateManager';
+import { App } from 'obsidian';
 
 interface QuadrantProps {
     quadrant: QuadrantType;
     onItemClick?: (item: Item) => void;
     onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
     onDragEnd?: (e: DragEvent) => void;
+    stateManager: StateManager;
+    app: App;
 }
 
-export function Quadrant({ quadrant, onItemClick, onDragStart, onDragEnd }: QuadrantProps) {
+export function Quadrant({ quadrant, onItemClick, onDragStart, onDragEnd, stateManager, app }: QuadrantProps) {
     return (
         <div className={`pmx-cell pmx-${quadrant.id}`}>
             <div className="pmx-cell-title">{quadrant.data.title}</div>
@@ -20,6 +24,8 @@ export function Quadrant({ quadrant, onItemClick, onDragStart, onDragEnd }: Quad
                     onDragStart={onDragStart}
                     onDragEnd={onDragEnd}
                     from={quadrant.id as 'q1' | 'q2' | 'q3' | 'q4'}
+                    stateManager={stateManager}
+                    app={app}
                 />
             </div>
         </div>

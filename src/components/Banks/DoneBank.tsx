@@ -1,6 +1,8 @@
 import { h, Fragment } from 'preact';
 import { Item } from '../../types';
 import { Items } from '../Item/Items';
+import { StateManager } from '../../state/StateManager';
+import { App } from 'obsidian';
 
 interface DoneBankProps {
     items: Item[];
@@ -9,9 +11,11 @@ interface DoneBankProps {
     onItemClick?: (item: Item) => void;
     onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
     onDragEnd?: (e: DragEvent) => void;
+    stateManager: StateManager;
+    app: App;
 }
 
-export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick, onDragStart, onDragEnd }: DoneBankProps) {
+export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick, onDragStart, onDragEnd, stateManager, app }: DoneBankProps) {
     return (
         <>
             <div className="pmx-col-header">
@@ -40,6 +44,8 @@ export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick, onDr
                         onDragStart={onDragStart}
                         onDragEnd={onDragEnd}
                         from="done"
+                        stateManager={stateManager}
+                        app={app}
                     />
                 </div>
             </div>

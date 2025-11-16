@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { Item } from '../../types';
 import { Items } from '../Item/Items';
 import { StateManager } from '../../state/StateManager';
+import { App } from 'obsidian';
 
 interface TodoBankProps {
     items: Item[];
@@ -12,9 +13,10 @@ interface TodoBankProps {
     onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
     onDragEnd?: (e: DragEvent) => void;
     stateManager: StateManager;
+    app: App;
 }
 
-export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onDragStart, onDragEnd, stateManager }: TodoBankProps) {
+export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onDragStart, onDragEnd, stateManager, app }: TodoBankProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [newItemText, setNewItemText] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
@@ -156,6 +158,8 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onDr
                         onDragStart={onDragStart}
                         onDragEnd={onDragEnd}
                         from="todo"
+                        stateManager={stateManager}
+                        app={app}
                     />
                 </div>
             </div>

@@ -15,6 +15,26 @@ export class StateManager {
     }
 
     /**
+     * Remove an item from a section by id
+     */
+    removeItem(itemId: string, section: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done'): void {
+        if (!this.state) return;
+        if (section === 'todo') {
+            this.state.data.banks.todo = this.state.data.banks.todo.filter(i => i.id !== itemId);
+        } else if (section === 'done') {
+            this.state.data.banks.done = this.state.data.banks.done.filter(i => i.id !== itemId);
+        } else {
+            const quadrant = this.state.children.find(q => q.id === section);
+            if (quadrant) {
+                quadrant.children = quadrant.children.filter(i => i.id !== itemId);
+            }
+        }
+        // Create new top-level reference so UI hooks detect the change
+        this.state = { ...this.state };
+        this.notifyListeners();
+    }
+
+    /**
      * Get the current matrix state
      */
     getState(): Matrix | null {
@@ -27,6 +47,8 @@ export class StateManager {
     async getParsedMatrix(data: string): Promise<Matrix> {
         const matrix = mdToMatrix(data, this.app, this.file.path);
         this.state = matrix;
+        // Create new top-level reference so UI hooks detect the change
+        this.state = { ...this.state };
         this.notifyListeners();
         return matrix;
     }
@@ -36,6 +58,8 @@ export class StateManager {
      */
     setState(matrix: Matrix): void {
         this.state = matrix;
+        // Create new top-level reference so UI hooks detect the change
+        this.state = { ...this.state };
         this.notifyListeners();
     }
 
@@ -174,6 +198,8 @@ export class StateManager {
             }
         }
 
+        // Create new top-level reference so UI hooks detect the change
+        this.state = { ...this.state };
         this.notifyListeners();
     }
 

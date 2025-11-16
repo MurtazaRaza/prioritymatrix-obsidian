@@ -252,6 +252,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                         onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
                         stateManager={stateManager}
+                        app={app}
                     />
                 </div>
                 
@@ -274,6 +275,8 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                             onDragStart={handleDragStart}
                             onDragEnd={handleDragEnd}
                             from="q1"
+                            stateManager={stateManager}
+                            app={app}
                         />
                     </div>
                 </div>
@@ -292,6 +295,8 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                             onDragStart={handleDragStart}
                             onDragEnd={handleDragEnd}
                             from="q2"
+                            stateManager={stateManager}
+                            app={app}
                         />
                     </div>
                 </div>
@@ -310,6 +315,8 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                             onDragStart={handleDragStart}
                             onDragEnd={handleDragEnd}
                             from="q3"
+                            stateManager={stateManager}
+                            app={app}
                         />
                     </div>
                 </div>
@@ -328,6 +335,8 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                             onDragStart={handleDragStart}
                             onDragEnd={handleDragEnd}
                             from="q4"
+                            stateManager={stateManager}
+                            app={app}
                         />
                     </div>
                 </div>
@@ -345,6 +354,8 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                         onItemClick={handleItemClick}
                         onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
+                        stateManager={stateManager}
+                        app={app}
                     />
                 </div>
             </div>

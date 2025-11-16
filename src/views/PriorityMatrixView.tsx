@@ -349,15 +349,26 @@ export class PriorityMatrixView extends TextFileView {
         
         // Collect from TODO bank
         matrix.data.banks.todo.forEach(item => {
+            // Prefer resolved file path if available, fallback to wikilink text
+            const filePath = item.data.metadata.fileAccessor?.path;
+            if (filePath) {
+                existingPaths.add(filePath);
+                return;
+            }
             const match = item.data.titleRaw.match(/\[\[([^\]]+)\]\]/);
             if (match) {
-                const path = match[1].split('|')[0].trim(); // Get path part before | if alias exists
+                const path = match[1].split('|')[0].trim();
                 existingPaths.add(path);
             }
         });
         
         // Collect from DONE bank
         matrix.data.banks.done.forEach(item => {
+            const filePath = item.data.metadata.fileAccessor?.path;
+            if (filePath) {
+                existingPaths.add(filePath);
+                return;
+            }
             const match = item.data.titleRaw.match(/\[\[([^\]]+)\]\]/);
             if (match) {
                 const path = match[1].split('|')[0].trim();
@@ -368,6 +379,11 @@ export class PriorityMatrixView extends TextFileView {
         // Collect from all quadrants (Q1-Q4)
         matrix.children.forEach(quadrant => {
             quadrant.children.forEach(item => {
+                const filePath = item.data.metadata.fileAccessor?.path;
+                if (filePath) {
+                    existingPaths.add(filePath);
+                    return;
+                }
                 const match = item.data.titleRaw.match(/\[\[([^\]]+)\]\]/);
                 if (match) {
                     const path = match[1].split('|')[0].trim();
