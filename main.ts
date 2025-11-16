@@ -22,6 +22,8 @@ const DEFAULT_SETTINGS: PriorityMatrixPluginSettings = {
 export default class PriorityMatrixPlugin extends Plugin {
     settings: PriorityMatrixPluginSettings;
     private pendingMatrixFiles = new Set<string>();
+    private markdownViewsWithActions = new WeakSet<MarkdownView>();
+    private suppressAutoSwitch = new Set<string>();
 
     async onload() {
         await this.loadSettings();
@@ -106,55 +108,20 @@ export default class PriorityMatrixPlugin extends Plugin {
             }
         }));
 
-        // Register markdown post-processor to add switch button and hide code block
-        // Only processes files that are priority matrix notes to avoid conflicts
-        this.registerMarkdownPostProcessor((el, ctx) => {
-            const file = ctx.sourcePath ? this.app.vault.getAbstractFileByPath(ctx.sourcePath) : null;
-            if (!(file instanceof TFile)) {
-                return;
-            }
-            
-            // Quick filter: only process markdown files
-            // Content check happens below
-            if (file.extension !== 'md') {
-                return;
-            }
-            
-            // Additional content check: verify it actually has priority matrix markers
-            const headings = el.querySelectorAll('h1, h2, h3, h4, h5, h6');
-            let hasMatrixHeadings = false;
-            for (const heading of Array.from(headings)) {
-                const text = heading.textContent?.toLowerCase() || '';
-                if (text === 'todo' || text === 'q1' || text === 'q2' || text === 'q3' || text === 'q4' || text === 'done') {
-                    hasMatrixHeadings = true;
-                    break;
+        // Removed markdown post-processor that injected an in-body button.
+
+        // Listen for a suppression request coming from views before switching to markdown
+        this.registerEvent(
+            (this.app.workspace as any).on('priority-matrix:suppress-next-autoswitch', (path: string) => {
+                if (typeof path === 'string' && path.length > 0) {
+                    this.suppressAutoSwitch.add(path);
+                    // Also clear any pending auto-switch for this path
+                    this.pendingMatrixFiles.delete(path);
                 }
-            }
-            
-            // Only proceed if we find actual priority matrix content
-            if (!hasMatrixHeadings) {
-                return;
-            }
+            })
+        );
 
-            // Add a button at the top to switch to matrix view
-            const firstHeading = el.querySelector('h1, h2, h3, h4, h5, h6');
-            if (firstHeading) {
-                const buttonContainer = document.createElement('div');
-                buttonContainer.style.cssText = 'margin-bottom: 1em; padding: 8px; background: var(--background-secondary); border-radius: 4px;';
-                
-                const button = document.createElement('button');
-                button.textContent = 'Switch to Matrix View';
-                button.style.cssText = 'padding: 6px 12px; background: var(--interactive-accent); color: var(--text-on-accent); border: none; border-radius: 4px; cursor: pointer;';
-                button.addEventListener('click', () => {
-                    this.openAsMatrixView(file);
-                });
-                
-                buttonContainer.appendChild(button);
-                firstHeading.parentNode?.insertBefore(buttonContainer, firstHeading);
-            }
-        });
-
-        // When a file is opened, mark it for matrix view if needed
+        // When a file is opened, mark it for matrix view if needed and switch immediately
         this.registerEvent(
             this.app.workspace.on('file-open', async (file: TFile) => {
                 if (!file || file.extension !== 'md') return;
@@ -162,16 +129,21 @@ export default class PriorityMatrixPlugin extends Plugin {
                 // Quick synchronous check first (filename)
                 const quickCheck = file.name.toLowerCase().includes('priority matrix');
                 
+                let isMatrixFile = false;
                 if (quickCheck) {
-                    this.pendingMatrixFiles.add(file.path);
-                    return;
+                    isMatrixFile = true;
+                    if (!this.suppressAutoSwitch.has(file.path)) {
+                        this.pendingMatrixFiles.add(file.path);
+                    }
+                } else {
+                    // For other files, do async content check
+                    isMatrixFile = await this.noteHasPriorityMatrixBlock(file);
+                    if (isMatrixFile && !this.suppressAutoSwitch.has(file.path)) {
+                        this.pendingMatrixFiles.add(file.path);
+                    }
                 }
                 
-                // For other files, do async content check
-                const isMatrixFile = await this.noteHasPriorityMatrixBlock(file);
-                if (isMatrixFile) {
-                    this.pendingMatrixFiles.add(file.path);
-                }
+                // Do not switch here; active-leaf-change will handle if pending
             })
         );
         
@@ -203,33 +175,64 @@ export default class PriorityMatrixPlugin extends Plugin {
                     return;
                 }
                 
-                const isPending = this.pendingMatrixFiles.has(file.path);
-                console.log('[PriorityMatrix] active-leaf-change: checking pending files', {
-                    filePath: file.path,
-                    isPending,
-                    pendingFiles: Array.from(this.pendingMatrixFiles)
-                });
-                
-                if (!isPending) {
-                    return;
-                }
-                
-                // Only switch if it's currently a markdown view
-                if (viewType === 'markdown') {
-                    console.log('[PriorityMatrix] active-leaf-change: switching to matrix view', {
-                        filePath: file.path
-                    });
+                // If this was an explicit switch to markdown, respect it and clear flags,
+                // but DO NOT return; we still want to add header actions below.
+                const wasSuppressed = this.suppressAutoSwitch.has(file.path);
+                if (wasSuppressed) {
+                    this.suppressAutoSwitch.delete(file.path);
                     this.pendingMatrixFiles.delete(file.path);
-                    await leaf.setViewState({
-                        type: VIEW_TYPE_PRIORITY_MATRIX,
-                        state: { file: file.path },
-                    });
-                    console.log('[PriorityMatrix] active-leaf-change: view state changed to matrix');
-                } else {
-                    console.log('[PriorityMatrix] active-leaf-change: not markdown view, not switching', {
-                        viewType
-                    });
                 }
+                
+                // Check if this file is pending (just opened) - only auto-switch for pending files
+                const isPending = this.pendingMatrixFiles.has(file.path);
+                
+                if (isPending) {
+                    // File was just opened and is pending - check if it's a matrix file and switch
+                    const isMatrixFile = await this.noteHasPriorityMatrixBlock(file);
+                    this.pendingMatrixFiles.delete(file.path);
+                    
+                    if (isMatrixFile && viewType === 'markdown') {
+                        // Only auto-switch if it's a pending file (just opened) and currently in markdown view
+                        console.log('[PriorityMatrix] active-leaf-change: switching to matrix view (pending file)', {
+                            filePath: file.path
+                        });
+                        await leaf.setViewState({
+                            type: VIEW_TYPE_PRIORITY_MATRIX,
+                            state: { file: file.path },
+                        });
+                        console.log('[PriorityMatrix] active-leaf-change: view state changed to matrix');
+                        return; // Don't add markdown actions since we're switching
+                    }
+                }
+                
+                // For non-pending files (user has already interacted with the file),
+                // just add header actions if it's a matrix file, but don't auto-switch
+                if (view instanceof MarkdownView && !this.markdownViewsWithActions.has(view)) {
+                    const isMatrixFile = await this.noteHasPriorityMatrixBlock(file);
+                    if (isMatrixFile) {
+                        this.addMarkdownViewActions(view, file);
+                        this.markdownViewsWithActions.add(view);
+                    }
+                }
+            })
+        );
+        
+        // Also check when a markdown view is opened
+        this.registerEvent(
+            this.app.workspace.on('file-open', async (file: TFile) => {
+                if (!file || file.extension !== 'md') return;
+                
+                // Wait a bit for the view to be ready
+                setTimeout(async () => {
+                    const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+                    if (activeView && activeView.file?.path === file.path && !this.markdownViewsWithActions.has(activeView)) {
+                        const isMatrixFile = await this.noteHasPriorityMatrixBlock(file);
+                        if (isMatrixFile) {
+                            this.addMarkdownViewActions(activeView, file);
+                            this.markdownViewsWithActions.add(activeView);
+                        }
+                    }
+                }, 100);
             })
         );
     }
@@ -251,19 +254,29 @@ export default class PriorityMatrixPlugin extends Plugin {
     }
 
     private async openAsMatrixView(file: TFile) {
-        const leaf = this.app.workspace.getLeaf(true);
+        // Use the current active leaf instead of creating a new one
+        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+        const leaf = activeView?.leaf || this.app.workspace.getMostRecentLeaf();
+        if (leaf) {
         await leaf.setViewState({
             type: VIEW_TYPE_PRIORITY_MATRIX,
             state: { file: file.path },
         });
+        }
     }
 
     private async openAsMarkdownView(file: TFile) {
-        const leaf = this.app.workspace.getLeaf(true);
+        // Use the current active leaf instead of creating a new one
+        const activeView = this.app.workspace.getActiveViewOfType(PriorityMatrixView);
+        const leaf = activeView?.leaf || this.app.workspace.getMostRecentLeaf();
+        if (leaf) {
+        // Suppress auto-switching back to matrix on the next activation for this file
+        this.suppressAutoSwitch.add(file.path);
         await leaf.setViewState({
             type: 'markdown',
             state: { file: file.path },
         });
+        }
     }
 
     private async createPriorityMatrixInActiveFolder() {
@@ -420,6 +433,27 @@ export default class PriorityMatrixPlugin extends Plugin {
             // If we can't read the file, fall back to filename check
             return false;
         }
+    }
+    
+    // Add header actions to markdown view for priority matrix files
+    private addMarkdownViewActions(view: MarkdownView, file: TFile): void {
+        // Add refresh button - reloads the file to refresh the view
+        view.addAction('refresh-cw', 'Refresh', async () => {
+            try {
+                // Read current content and modify file to trigger change event
+                // This will cause Obsidian to refresh the markdown view
+                const content = await this.app.vault.read(file);
+                // Modify with same content to trigger file change event
+                await this.app.vault.modify(file, content);
+            } catch (error) {
+                console.error('[PriorityMatrix] Error refreshing markdown view:', error);
+            }
+        });
+        
+        // Add switch to matrix view button
+        view.addAction('layout-grid', 'Switch to Matrix View', async () => {
+            await this.openAsMatrixView(file);
+        });
     }
 }
 

@@ -156,10 +156,16 @@ export class PriorityMatrixView extends TextFileView {
         
         this.addAction('file-text', 'Open as Markdown', async () => {
             if (this.file) {
-                this.app.workspace.getLeaf(true).setViewState({
-                    type: 'markdown',
-                    state: { file: this.file.path },
-                });
+                // Signal main.ts to suppress next auto-switch back to matrix
+                this.app.workspace.trigger('priority-matrix:suppress-next-autoswitch', this.file.path);
+                // Switch in the same tab/leaf
+                const leaf = this.leaf;
+                if (leaf) {
+                    await leaf.setViewState({
+                        type: 'markdown',
+                        state: { file: this.file.path },
+                    });
+                }
             }
         });
         
