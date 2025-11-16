@@ -344,6 +344,10 @@ export class PriorityMatrixView extends TextFileView {
 
         await walk(includeRoot);
 
+        // Exemption list: skip any paths present
+        const exemptSet = new Set<string>((settings.exemptPaths || []).map(p => p.trim()).filter(Boolean));
+        const filteredResults = results.filter(path => !exemptSet.has(path));
+
         // Get all existing item paths from all sections (TODO, Q1-Q4, DONE)
         const existingPaths = new Set<string>();
         
@@ -395,7 +399,7 @@ export class PriorityMatrixView extends TextFileView {
         console.log(`[PriorityMatrix] Found ${existingPaths.size} existing items in matrix`);
 
         // Add new items
-        const newItems = results
+        const newItems = filteredResults
             .filter(path => !existingPaths.has(path))
             .map(path => ({
                 id: path,

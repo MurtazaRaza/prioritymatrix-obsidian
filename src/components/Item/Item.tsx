@@ -68,8 +68,22 @@ export function ItemComponent({ item, onItemClick, onDragStart, onDragEnd, from,
                                 new Notice('Will remove #TODO from linked note (coming soon)');
                             },
                             () => {
-                                // TODO: Implement adding to exemption list
-                                new Notice('Will add note to exemption list (coming soon)');
+                                // Add to exemption list and remove item
+                                const filePath = item.data.metadata.fileAccessor?.path;
+                                if (!filePath) {
+                                    new Notice('Could not resolve file path for exemption');
+                                    return;
+                                }
+                                const current = stateManager.getState();
+                                if (!current) return;
+                                const settings = current.data.settings;
+                                const list = new Set<string>((settings.exemptPaths || []).map(p => p.trim()).filter(Boolean));
+                                list.add(filePath);
+                                settings.exemptPaths = Array.from(list);
+                                stateManager.setState(current);
+                                stateManager.removeItem(item.id, section);
+                                stateManager.save();
+                                new Notice('Added to exemption list and removed from matrix');
                             }
                         );
                         modal.open();

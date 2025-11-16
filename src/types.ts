@@ -7,6 +7,7 @@ export interface MatrixSettings {
     maxFiles: number;
     autoRemoveTodoOnDone: boolean;
     enableStrikethroughOnDone: boolean;
+    exemptPaths: string[];
 }
 
 export interface ItemMetadata {
