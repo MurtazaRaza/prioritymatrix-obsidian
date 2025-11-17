@@ -63,9 +63,49 @@ export function ItemComponent({ item, onItemClick, onDragStart, onDragEnd, from,
                             return;
                         }
                         const modal = new TodoLinkedRemoveModal(app,
-                            () => {
-                                // TODO: Implement removing #TODO from linked note
-                                new Notice('Will remove #TODO from linked note (coming soon)');
+                            async () => {
+                                // Remove #TODO from linked note
+                                const file = item.data.metadata.fileAccessor;
+                                if (!file) {
+                                    new Notice('Could not resolve file');
+                                    return;
+                                }
+
+                                try {
+                                    // Get the TODO tag from matrix settings
+                                    const current = stateManager.getState();
+                                    if (!current) {
+                                        new Notice('Could not access matrix state');
+                                        return;
+                                    }
+                                    const todoTag = current.data.settings.todoTag || 'TODO';
+
+                                    // Read file content
+                                    const content = await app.vault.read(file);
+
+                                    // Create regex to match the tag (case-insensitive, with negative lookahead)
+                                    const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                    const tagPattern = `#${escapeRegExp(todoTag)}(?![\w-])`;
+                                    const tagRegex = new RegExp(tagPattern, 'gi');
+
+                                    // Remove all instances of the tag
+                                    let newContent = content.replace(tagRegex, '');
+
+                                    // Clean up any resulting double spaces (but preserve line breaks)
+                                    newContent = newContent.replace(/[ \t]{2,}/g, ' ');
+
+                                    // Save the modified content
+                                    await app.vault.modify(file, newContent);
+
+                                    // Remove the bubble from the matrix
+                                    stateManager.removeItem(item.id, section);
+                                    stateManager.save();
+
+                                    new Notice(`Removed #${todoTag} from note and removed from matrix`);
+                                } catch (error) {
+                                    console.error('[PriorityMatrix] Error removing TODO tag:', error);
+                                    new Notice('Error removing TODO tag: ' + (error instanceof Error ? error.message : String(error)));
+                                }
                             },
                             () => {
                                 // Add to exemption list and remove item
