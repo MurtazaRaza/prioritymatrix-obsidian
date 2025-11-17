@@ -1,94 +1,114 @@
-# Obsidian Sample Plugin
+# Priority Matrix Obsidian Plugin
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+An Obsidian plugin that creates and manages Eisenhower priority matrix notes with automatic TODO sourcing from your vault.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+- **Eisenhower Matrix View**: Visualize your tasks in a 2x2 priority matrix (Urgent/Important, Urgent/Not Important, Not Urgent/Important, Not Urgent/Not Important)
+- **Automatic TODO Sourcing**: Automatically scans your vault for tasks tagged with `#TODO` and displays them in the matrix
+- **Interactive Task Management**: Drag and drop tasks between quadrants to reprioritize, mark tasks as done, and manage your workflow
+- **Custom Matrix Notes**: Create new priority matrix notes with a single command
+- **Auto-Switch View**: Automatically opens files with "priority matrix" in the name in matrix view
+- **Flexible Configuration**: Customize scan paths, TODO tags, and behavior settings
+- **Markdown Integration**: Matrix notes are stored as markdown files, fully compatible with Obsidian's native features
 
-## First time developing plugins?
+## Installation
 
-Quick starting guide for new plugin devs:
+### From Obsidian Community Plugins
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+1. Open **Settings** → **Community plugins**
+2. Make sure Safe mode is **off**
+3. Click **Browse** and search for "Priority Matrix"
+4. Click **Install**, then **Enable**
 
-## Releasing new releases
+### Manual Installation
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+1. Download the latest release from the [GitHub repository](https://github.com/murtazaraza/prioritymatrix-obsidian)
+2. Extract the zip file and copy the `main.js`, `manifest.json`, and `styles.css` files to your vault's `.obsidian/plugins/priority-matrix/` folder
+3. Reload Obsidian
+4. Enable the plugin in **Settings** → **Community plugins**
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+## Usage
 
-## Adding your plugin to the community plugin list
+### Creating a Priority Matrix Note
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+1. Open the command palette (`Ctrl+P` / `Cmd+P`)
+2. Run **Create priority matrix note**
+3. A new note with the matrix template will be created in the current folder
 
-## How to use
+Alternatively, you can:
+- Right-click on a folder in the file explorer and select **New priority matrix note**
+- Use the command **Open as matrix** to convert an existing markdown file into a matrix view
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+### Working with the Matrix
 
-## Manually installing the plugin
+- **View Tasks**: Tasks from your vault tagged with `#TODO` will automatically appear in the matrix
+- **Move Tasks**: Drag tasks between quadrants to reprioritize them
+- **Mark as Done**: Move tasks to the Done bank to mark them as complete
+- **Edit Tasks**: Click on tasks to edit them directly in their source files
+- **Switch Views**: Toggle between matrix view and markdown view using the view switcher
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+### Matrix Quadrants
 
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint ./src/`
+The Eisenhower Matrix organizes tasks into four quadrants:
 
-## Funding URL
+- **Q1 (Urgent & Important)**: Do these tasks immediately
+- **Q2 (Not Urgent & Important)**: Schedule time for these tasks
+- **Q3 (Urgent & Not Important)**: Delegate these if possible
+- **Q4 (Not Urgent & Not Important)**: Consider eliminating these tasks
 
-You can include funding URLs where people who use your plugin can financially support it.
+## Configuration
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+Access plugin settings via **Settings** → **Priority Matrix**.
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+### Scan Settings
 
-If you have multiple URLs, you can also do:
+- **Include folder**: Vault-relative path to scan for `#TODO` notes (default: `/` for entire vault)
+- **Recursive scan**: Enable to scan subfolders of the include folder
+- **TODO tag**: Tag to match (without `#`), case-insensitive (default: `TODO`)
+- **Max files to scan**: Limit the number of files to scan (set to `0` for unlimited)
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+### Behavior Settings
 
-## API Documentation
+- **Auto-remove TODO on Done**: Remove the `#TODO` tag when a task is moved to Done (instead of strikethrough)
+- **Strikethrough TODO on Done**: Replace `#TODO` with `~~#TODO~~` when moved to Done (disabled if auto-remove is enabled)
 
-See https://github.com/obsidianmd/obsidian-api
+## Requirements
+
+- Obsidian v0.15.0 or higher
+- No additional dependencies required
+
+## Troubleshooting
+
+### Tasks Not Appearing
+
+- Ensure your tasks are tagged with `#TODO` (or the tag you configured in settings)
+- Check that the **Include folder** setting includes the path where your TODO notes are located
+- Verify that **Recursive scan** is enabled if your TODOs are in subfolders
+- Check the **Max files to scan** setting isn't limiting the scan
+
+### Matrix View Not Opening
+
+- Files with "priority matrix" in the name will automatically open in matrix view
+- For other files, use the **Open as matrix** command from the command palette
+- Ensure the file contains a priority matrix code block or frontmatter
+
+### Plugin Not Loading
+
+- Verify the plugin is enabled in **Settings** → **Community plugins**
+- Check that `main.js`, `manifest.json`, and `styles.css` are in the correct folder: `.obsidian/plugins/priority-matrix/`
+- Try reloading Obsidian (`Ctrl+R` / `Cmd+R`)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For issues, feature requests, or questions:
+- Open an issue on the [GitHub repository](https://github.com/murtazaRaza/prioritymatrix-obsidian)
+- Check existing issues and discussions for solutions
