@@ -1,4 +1,4 @@
-# Priority Matrix Obsidian Plugin
+# Priority Matrix Obsidian Plugin (In Progress)
 
 An Obsidian plugin that creates and manages Eisenhower priority matrix notes with automatic TODO sourcing from your vault.
 
