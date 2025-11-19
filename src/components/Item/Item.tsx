@@ -2,6 +2,7 @@ import { h } from 'preact';
 import { App, Menu, Modal, Setting, Notice } from 'obsidian';
 import { Item } from '../../types';
 import { StateManager } from '../../state/StateManager';
+import { createLogger } from '../../utils/logger';
 
 interface ItemProps {
     item: Item;
@@ -35,6 +36,8 @@ class TodoLinkedRemoveModal extends Modal {
 			.addButton(b => b.setButtonText('Cancel').onClick(() => this.close()));
 	}
 }
+
+const log = createLogger('ItemComponent');
 
 export function ItemComponent({ item, onItemClick, onDragStart, onDragEnd, from, stateManager, app }: ItemProps) {
     const handleClick = () => {
@@ -103,7 +106,7 @@ export function ItemComponent({ item, onItemClick, onDragStart, onDragEnd, from,
 
                                     new Notice(`Removed #${todoTag} from note and removed from matrix`);
                                 } catch (error) {
-                                    console.error('[PriorityMatrix] Error removing TODO tag:', error);
+                                    log.error('Error removing TODO tag:', error);
                                     new Notice('Error removing TODO tag: ' + (error instanceof Error ? error.message : String(error)));
                                 }
                             },

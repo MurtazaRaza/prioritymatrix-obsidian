@@ -1,6 +1,9 @@
 import { useState as usePreactState, useEffect } from 'preact/hooks';
 import { StateManager } from './StateManager';
 import { Matrix } from '../types';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('useStateHook');
 
 /**
  * React hook to use StateManager state
@@ -15,7 +18,7 @@ export function useState(manager: StateManager): Matrix | null {
         // Subscribe to changes
         const unsubscribe = manager.subscribe(() => {
             const newState = manager.getState();
-            console.log('[PriorityMatrix] State changed, new state:', newState);
+            log.log('State changed, new state:', newState);
             setState(newState);
         });
         return unsubscribe;

@@ -3,6 +3,7 @@ import type { Root, Heading, List, ListItem, Paragraph, Text, Link } from 'mdast
 import { Matrix, Quadrant, Item, MatrixBanks, ErrorReport } from '../../types';
 import { DEFAULT_SETTINGS, parseSettingsFromJson } from '../../settings';
 import { ParsedMarkdown } from '../parseMarkdown';
+import { createLogger } from '../../utils/logger';
 
 type Section = 'none' | 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done';
 
@@ -151,6 +152,8 @@ function listItemToUnhydratedItem(listItem: ListItem, section: Section): Unhydra
 /**
  * Convert AST to unhydrated matrix structure
  */
+const log = createLogger('matrixParser');
+
 export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix {
     const matrix: UnhydratedMatrix = {
         quadrants: {
@@ -163,7 +166,15 @@ export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix 
             todo: [],
             done: [],
         },
-        settings: parsed.settings ? parseSettingsFromJson(parsed.settings) : DEFAULT_SETTINGS,
+        settings: (() => {
+            // log.log('astToUnhydratedMatrix - parsed.settings value', parsed.settings);
+            // log.log('astToUnhydratedMatrix - parsed.settings type', typeof parsed.settings);
+            // log.log('astToUnhydratedMatrix - parsed.settings truthy?', !!parsed.settings);
+            const result = parsed.settings ? parseSettingsFromJson(parsed.settings) : DEFAULT_SETTINGS;
+            // log.log('astToUnhydratedMatrix - parsed settings result', result);
+            // log.log('astToUnhydratedMatrix - result.includePath', result.includePath);
+            return result;
+        })(),
         frontmatter: parsed.frontmatter,
         errors: [],
     };
@@ -171,10 +182,6 @@ export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix 
     let currentSection: Section = 'none';
     const ast = parsed.ast;
 
-    // Debug: log AST structure
-    console.log('[PriorityMatrix] AST root children count:', ast.children?.length || 0);
-    console.log('[PriorityMatrix] AST root children types:', ast.children?.map(c => c.type) || []);
-    
     // First pass: collect all headings and their positions
     const headings: Array<{ text: string; section: Section; rawText: string }> = [];
     visit(ast, (node) => {
@@ -185,7 +192,7 @@ export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix 
             const text = rawText.toLowerCase().trim();
             let section: Section = 'none';
             
-            console.log(`[PriorityMatrix] Found heading node: depth=${heading.depth}, rawText="${rawText}", normalized="${text}"`);
+            log.log(`Found heading node: depth=${heading.depth}, rawText="${rawText}", normalized="${text}"`);
             
             if (text === 'todo') {
                 section = 'todo';
@@ -203,14 +210,14 @@ export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix 
             
             headings.push({ text, section, rawText });
             if (section !== 'none') {
-                console.log(`[PriorityMatrix] Recognized heading: "${text}" -> section: ${section}`);
+                log.log(`Recognized heading: "${text}" -> section: ${section}`);
             } else {
-                console.log(`[PriorityMatrix] Unrecognized heading: "${text}" (raw: "${rawText}")`);
+                log.log(`Unrecognized heading: "${text}" (raw: "${rawText}")`);
             }
         }
     });
     
-    console.log('[PriorityMatrix] Total headings found:', headings.length);
+    log.log('Total headings found', headings.length);
 
     // Second pass: process nodes and track current section
     visit(ast, (node, index, parent) => {
@@ -221,27 +228,27 @@ export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix 
             
             if (text === 'todo') {
                 currentSection = 'todo';
-                console.log('[PriorityMatrix] Entering TODO section');
+                log.log('Entering TODO section');
             } else if (text === 'q1') {
                 currentSection = 'q1';
-                console.log('[PriorityMatrix] Entering Q1 section');
+                log.log('Entering Q1 section');
             } else if (text === 'q2') {
                 currentSection = 'q2';
-                console.log('[PriorityMatrix] Entering Q2 section');
+                log.log('Entering Q2 section');
             } else if (text === 'q3') {
                 currentSection = 'q3';
-                console.log('[PriorityMatrix] Entering Q3 section');
+                log.log('Entering Q3 section');
             } else if (text === 'q4') {
                 currentSection = 'q4';
-                console.log('[PriorityMatrix] Entering Q4 section');
+                log.log('Entering Q4 section');
             } else if (text === 'done') {
                 currentSection = 'done';
-                console.log('[PriorityMatrix] Entering DONE section');
+                log.log('Entering DONE section');
             } else {
                 // Don't reset to 'none' if we're already in a section
                 // Only reset if this is a different heading
                 if (!headings.some(h => h.text === text)) {
-                    console.log(`[PriorityMatrix] Unknown heading: "${text}", keeping current section: ${currentSection}`);
+                    log.log(`Unknown heading: "${text}", keeping current section: ${currentSection}`);
                 }
             }
             return;
@@ -251,20 +258,20 @@ export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix 
         if (node.type === 'list') {
             const list = node as List;
             if (currentSection === 'none') {
-                console.log('[PriorityMatrix] List found but no active section. Current headings found:', headings);
+                log.log('List found but no active section. Current headings found', headings);
                 // Try to infer section from parent or previous siblings
                 return;
             }
 
-            console.log(`[PriorityMatrix] Processing list in section: ${currentSection}, items: ${list.children.length}`);
+            log.log(`Processing list in section: ${currentSection}, items: ${list.children.length}`);
             list.children.forEach((listItem) => {
                 const item = listItemToUnhydratedItem(listItem, currentSection);
                 if (!item) {
-                    console.log('[PriorityMatrix] Failed to parse list item');
+                    log.log('Failed to parse list item');
                     return;
                 }
 
-                console.log(`[PriorityMatrix] Parsed item: ${item.titleRaw} in ${currentSection}`);
+                log.log(`Parsed item: ${item.titleRaw} in ${currentSection}`);
 
                 if (currentSection === 'todo') {
                     if (item.checked) {

@@ -2,6 +2,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmTaskListItemFromMarkdown } from 'mdast-util-gfm-task-list-item';
 import { gfmTaskListItem } from 'micromark-extension-gfm-task-list-item';
 import type { Root } from 'mdast';
+import { createLogger } from '../utils/logger';
 
 export interface ParsedMarkdown {
     frontmatter: Record<string, any>;
@@ -9,6 +10,8 @@ export interface ParsedMarkdown {
     content: string;
     ast: Root;
 }
+
+const log = createLogger('parseMarkdown');
 
 /**
  * Parse markdown content into AST and extract frontmatter/settings
@@ -43,10 +46,27 @@ export function parseMarkdown(md: string): ParsedMarkdown {
     }
 
     // Extract settings JSON block (```json in settingsJson section)
+    // Match heading, then any whitespace/newlines, then ```json, then capture JSON content, then closing ```
     let settings: string | null = null;
-    const settingsMatch = contentWithoutFrontmatter.match(/^##\s+settingsJson\s*\n[\s\S]*?```json\n([\s\S]*?)```/);
+    let settingsMatch: RegExpMatchArray | null = null;
+    
+    // Try primary pattern first (more strict)
+    settingsMatch = contentWithoutFrontmatter.match(/^##\s+settingsJson\s*[\r\n]+[\s\S]*?```json\s*[\r\n]+([\s\S]*?)```/);
     if (settingsMatch) {
         settings = settingsMatch[1].trim();
+        log.log('extracted settings string', settings);
+        log.log('settings string length', settings.length);
+    } else {
+        log.log('NO settings match found with primary pattern');
+        // Try a more flexible pattern as fallback (matches anywhere, handles any whitespace)
+        settingsMatch = contentWithoutFrontmatter.match(/##\s+settingsJson[\s\S]*?```json\s*([\s\S]*?)```/);
+        if (settingsMatch) {
+            settings = settingsMatch[1].trim();
+            log.log('fallback pattern matched, extracted', settings);
+            log.log('settings string length', settings.length);
+        } else {
+            log.log('NO settings match found with fallback pattern either');
+        }
     }
 
     // Remove settings block from content for AST parsing
@@ -56,8 +76,8 @@ export function parseMarkdown(md: string): ParsedMarkdown {
     }
 
     // Debug: log content being parsed
-    console.log('[PriorityMatrix] Content for AST (first 500 chars):', contentForAst.substring(0, 500));
-    console.log('[PriorityMatrix] Content length:', contentForAst.length);
+    // log.log('Content for AST (first 500 chars)', contentForAst.substring(0, 500));
+    // log.log('Content length', contentForAst.length);
 
     // Parse markdown to AST
     const ast = fromMarkdown(contentForAst, {
@@ -65,8 +85,8 @@ export function parseMarkdown(md: string): ParsedMarkdown {
         mdastExtensions: [gfmTaskListItemFromMarkdown],
     });
 
-    console.log('[PriorityMatrix] AST created, root type:', ast.type);
-    console.log('[PriorityMatrix] AST children count:', ast.children?.length || 0);
+    // log.log('AST created, root type', ast.type);
+    // log.log('AST children count', ast.children?.length || 0);
 
     return {
         frontmatter,

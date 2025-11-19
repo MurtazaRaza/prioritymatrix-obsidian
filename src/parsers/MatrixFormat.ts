@@ -3,6 +3,9 @@ import { Matrix } from '../types';
 import { parseMarkdown, ParsedMarkdown } from './parseMarkdown';
 import { astToUnhydratedMatrix } from './formats/matrix';
 import { hydrateMatrix } from './helpers/hydrateMatrix';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('MatrixFormat');
 
 /**
  * Convert markdown to Matrix structure
@@ -70,7 +73,10 @@ export function matrixToMd(matrix: Matrix): string {
     lines.push('## settingsJson');
     lines.push('');
     lines.push('```json');
-    lines.push(JSON.stringify(matrix.data.settings, null, 2));
+    const settingsJsonString = JSON.stringify(matrix.data.settings, null, 2);
+    log.log('matrixToMd - saving settings JSON', settingsJsonString);
+    log.log('matrixToMd - settings.includePath', matrix.data.settings.includePath);
+    lines.push(settingsJsonString);
     lines.push('```');
     lines.push('');
 

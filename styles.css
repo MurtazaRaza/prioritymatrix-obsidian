@@ -96,6 +96,73 @@ If your plugin does not need CSS, delete this file.
   display: none;
 }
 
+/* Settings Modal Styles */
+.priority-matrix-settings-modal {
+  min-width: 500px;
+  max-width: 700px;
+}
+
+.priority-matrix-settings-modal .modal-content {
+  padding: 20px;
+}
+
+.priority-matrix-settings-modal h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.priority-matrix-settings-modal h4 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 5px;
+}
+
+.priority-matrix-settings-modal .priority-matrix-settings-description {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin-bottom: 20px;
+}
+
+.priority-matrix-settings-modal .setting-item {
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 12px 0;
+}
+
+.priority-matrix-settings-modal .setting-item:first-of-type {
+  border-top: none;
+}
+
+.priority-matrix-settings-modal .setting-item-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.priority-matrix-settings-modal .setting-item-description {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin-bottom: 8px;
+}
+
+.priority-matrix-settings-modal input[type="text"],
+.priority-matrix-settings-modal input[type="number"],
+.priority-matrix-settings-modal textarea {
+  width: 100%;
+  max-width: 400px;
+}
+
+.priority-matrix-settings-modal input.error {
+  border-color: var(--text-error);
+}
+
+.priority-matrix-settings-modal textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+}
+
 .priority-matrix-view .pmx-cell {
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--input-radius);

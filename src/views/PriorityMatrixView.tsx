@@ -1,21 +1,29 @@
-import { TextFileView, WorkspaceLeaf, TFile, TFolder } from 'obsidian';
+import { TextFileView, WorkspaceLeaf, TFile, TFolder, Platform } from 'obsidian';
 import { render, h } from 'preact';
 import { Matrix, Item } from '../types';
 import { StateManager } from '../state/StateManager';
 import { useState } from '../state/useState';
 import { Matrix as MatrixComponent } from '../components/Matrix';
+import { SettingsModal } from '../settings/SettingsModal';
+import PriorityMatrixPlugin from '../../main';
+import { createLogger } from '../utils/logger';
 
 export const VIEW_TYPE_PRIORITY_MATRIX = 'priority-matrix-view';
 
+const log = createLogger('PriorityMatrixView');
+
 export class PriorityMatrixView extends TextFileView {
+    plugin: PriorityMatrixPlugin;
     private stateManager: StateManager | null = null;
     private isRendered: boolean = false;
     private renderTimeout: number | null = null;
     private isUnloading: boolean = false;
+    actionButtons: Record<string, HTMLElement> = {};
 
-    constructor(leaf: WorkspaceLeaf) {
+    constructor(leaf: WorkspaceLeaf, plugin: PriorityMatrixPlugin) {
         super(leaf);
-        console.log('[PriorityMatrix] PriorityMatrixView constructor called', {
+        this.plugin = plugin;
+        log.log('PriorityMatrixView constructor called', {
             file: this.file?.path
         });
     }
@@ -31,7 +39,7 @@ export class PriorityMatrixView extends TextFileView {
 
     async setViewData(data: string, clear: boolean): Promise<void> {
         const stackTrace = new Error().stack;
-        console.log('[PriorityMatrix] setViewData called', {
+        log.log('setViewData called', {
             file: this.file?.path,
             clear,
             dataLength: data.length,
@@ -43,7 +51,7 @@ export class PriorityMatrixView extends TextFileView {
 
         // Don't process if we're unloading - this prevents re-rendering during unload
         if (this.isUnloading) {
-            console.log('[PriorityMatrix] setViewData aborted - view is unloading');
+            log.log('setViewData aborted - view is unloading');
             this.data = data; // Still update data for getViewData()
             return;
         }
@@ -51,26 +59,26 @@ export class PriorityMatrixView extends TextFileView {
         this.data = data;
 
         if (!this.file) {
-            console.log('[PriorityMatrix] No file available');
+            log.log('No file available');
             return;
         }
 
         // Check if this file has priority matrix frontmatter or code block
         if (!this.isPriorityMatrixFile(data)) {
-            console.log('[PriorityMatrix] File does not appear to be a priority matrix file');
+            log.log('File does not appear to be a priority matrix file');
             return;
         }
 
         // Create or update state manager
         if (!this.stateManager || clear) {
-            console.log('[PriorityMatrix] Creating new StateManager', { clear, hadStateManager: !!this.stateManager });
+            log.log('Creating new StateManager', { clear, hadStateManager: !!this.stateManager });
             this.stateManager = new StateManager(this.app, this.file);
         }
 
         // Skip re-parsing if we're currently saving (prevents overwriting state during save)
         const isSaving = this.stateManager.getIsSaving();
         if (isSaving) {
-            console.log('[PriorityMatrix] Skipping re-parse during save operation');
+            log.log('Skipping re-parse during save operation');
             return;
         }
 
@@ -84,7 +92,7 @@ export class PriorityMatrixView extends TextFileView {
             const expectedTrimmed = expectedMd.trim();
             const matches = dataTrimmed === expectedTrimmed;
             
-            console.log('[PriorityMatrix] Comparing incoming data with current state', {
+            log.log('Comparing incoming data with current state', {
                 matches,
                 dataLength: dataTrimmed.length,
                 expectedLength: expectedTrimmed.length,
@@ -95,23 +103,23 @@ export class PriorityMatrixView extends TextFileView {
             });
 
             if (matches) {
-                console.log('[PriorityMatrix] Incoming data matches current state, skipping re-parse and re-render');
+                log.log('Incoming data matches current state, skipping re-parse and re-render');
                 // Don't re-render if data matches - this prevents unnecessary recreation
                 return;
             } else {
-                console.log('[PriorityMatrix] Data mismatch detected - will re-parse');
+                log.log('Data mismatch detected - will re-parse');
             }
         } else {
-            console.log('[PriorityMatrix] No current state or clear flag is true - will parse', {
+            log.log('No current state or clear flag is true - will parse', {
                 hasCurrentState: !!currentState,
                 clear
             });
         }
 
         // Parse and set state
-        console.log('[PriorityMatrix] Parsing matrix from data...');
+        log.log('Parsing matrix from data...');
         const matrix = await this.stateManager.getParsedMatrix(data);
-        console.log('[PriorityMatrix] Parsed matrix:', {
+        log.log('Parsed matrix:', {
             todoItems: matrix.data.banks.todo.length,
             q1Items: matrix.children.find(q => q.id === 'q1')?.children.length || 0,
             q2Items: matrix.children.find(q => q.id === 'q2')?.children.length || 0,
@@ -122,34 +130,39 @@ export class PriorityMatrixView extends TextFileView {
 
         // Clear any pending render timeout
         if (this.renderTimeout !== null) {
-            console.log('[PriorityMatrix] Clearing pending render timeout');
+            log.log('Clearing pending render timeout');
             clearTimeout(this.renderTimeout);
         }
 
         // Render after a brief delay to ensure state is set, and debounce rapid calls
-        console.log('[PriorityMatrix] Scheduling render');
+        log.log('Scheduling render');
         this.renderTimeout = window.setTimeout(() => {
-            console.log('[PriorityMatrix] Render timeout fired, calling render()');
+            log.log('Render timeout fired, calling render()');
             this.render();
             this.renderTimeout = null;
+            // Re-initialize header buttons after render
+            this.initHeaderButtons();
         }, 0);
     }
 
     clear(): void {
-        console.log('[PriorityMatrix] clear() called', {
+        log.log('clear() called', {
             file: this.file?.path,
             isRendered: this.isRendered
         });
         this.data = '';
         this.contentEl.empty();
         this.isRendered = false;
+        
+        // Remove action buttons
+        Object.values(this.actionButtons).forEach((b) => b.remove());
+        this.actionButtons = {};
     }
 
     onload(): void {
-        console.log('[PriorityMatrix] onload() called', { file: this.file?.path });
+        log.log('onload() called', { file: this.file?.path });
         super.onload();
         
-        // Add header action buttons
         this.addAction('refresh-cw', 'Refresh TODOs', async () => {
             await this.refreshTodos();
         });
@@ -169,11 +182,13 @@ export class PriorityMatrixView extends TextFileView {
             }
         });
         
+        this.initHeaderButtons();
+        
         // Load data when view loads
         if (this.file) {
-            console.log('[PriorityMatrix] Reading file in onload()');
+            log.log('Reading file in onload()');
             this.app.vault.read(this.file).then(data => {
-                console.log('[PriorityMatrix] File read in onload(), calling setViewData with clear=true');
+                log.log('File read in onload(), calling setViewData with clear=true');
                 this.setViewData(data, true);
             });
         }
@@ -181,7 +196,7 @@ export class PriorityMatrixView extends TextFileView {
 
     onunload(): void {
         const stackTrace = new Error().stack;
-        console.log('[PriorityMatrix] onunload() called', {
+        log.log('onunload() called', {
             file: this.file?.path,
             isRendered: this.isRendered,
             hasStateManager: !!this.stateManager,
@@ -208,7 +223,7 @@ export class PriorityMatrixView extends TextFileView {
 
     private render(): void {
         const stackTrace = new Error().stack;
-        console.log('[PriorityMatrix] render() called', {
+        log.log('render() called', {
             file: this.file?.path,
             hasStateManager: !!this.stateManager,
             hasFile: !!this.file,
@@ -218,7 +233,7 @@ export class PriorityMatrixView extends TextFileView {
         });
 
         if (!this.stateManager || !this.file) {
-            console.log('[PriorityMatrix] render() aborted - missing stateManager or file');
+            log.log('render() aborted - missing stateManager or file');
             return;
         }
 
@@ -228,13 +243,13 @@ export class PriorityMatrixView extends TextFileView {
         const containerExisted = !!container;
         
         if (!container) {
-            console.log('[PriorityMatrix] Container does not exist - creating new container and clearing contentEl');
+            log.log('Container does not exist - creating new container and clearing contentEl');
             this.contentEl.empty();
             container = this.contentEl.createDiv();
             container.addClass('priority-matrix-view');
             this.isRendered = true;
         } else {
-            console.log('[PriorityMatrix] Container exists - reusing it (no DOM recreation)');
+            log.log('Container exists - reusing it (no DOM recreation)');
         }
 
         // Create a wrapper component that uses the hook
@@ -251,27 +266,27 @@ export class PriorityMatrixView extends TextFileView {
 
         // Preact's render function handles updates to existing DOM efficiently
         // Always call render - it will diff and update only what changed
-        console.log('[PriorityMatrix] Calling Preact render()', {
+        log.log('Calling Preact render()', {
             containerExisted,
             willRecreateDOM: !containerExisted
         });
         render(<MatrixWrapper />, container);
-        console.log('[PriorityMatrix] Preact render() completed');
+        log.log('Preact render() completed');
     }
 
     async onOpen(): Promise<void> {
-        console.log('[PriorityMatrix] onOpen() called', { file: this.file?.path });
+        log.log('onOpen() called', { file: this.file?.path });
         // Load initial data
         if (this.file) {
-            console.log('[PriorityMatrix] Reading file in onOpen()');
+            log.log('Reading file in onOpen()');
             const data = await this.app.vault.read(this.file);
-            console.log('[PriorityMatrix] File read in onOpen(), calling setViewData with clear=true');
+            log.log('File read in onOpen(), calling setViewData with clear=true');
             await this.setViewData(data, true);
         }
     }
 
     async onClose(): Promise<void> {
-        console.log('[PriorityMatrix] onClose() called', {
+        log.log('onClose() called', {
             file: this.file?.path,
             hasStateManager: !!this.stateManager,
             fileExists: this.file ? this.app.vault.getAbstractFileByPath(this.file.path) !== null : false
@@ -285,10 +300,10 @@ export class PriorityMatrixView extends TextFileView {
         if (this.stateManager && this.file) {
             const fileStillExists = this.app.vault.getAbstractFileByPath(this.file.path) !== null;
             if (fileStillExists) {
-                console.log('[PriorityMatrix] File exists, saving before close');
+                log.log('File exists, saving before close');
                 await this.stateManager.save();
             } else {
-                console.log('[PriorityMatrix] File does not exist (likely being deleted), skipping save');
+                log.log('File does not exist (likely being deleted), skipping save');
             }
         }
     }
@@ -301,11 +316,15 @@ export class PriorityMatrixView extends TextFileView {
 
         // Get settings from matrix
         const settings = matrix.data.settings;
+        log.log('PriorityMatrixView - settings from matrix:', settings);
+        log.log('PriorityMatrixView - settings.includePath:', settings.includePath);
         // Default to the folder where the matrix note is located
         const matrixFolder = this.file.parent;
+        log.log('PriorityMatrixView - matrixFolder:', matrixFolder?.path || 'null');
         const includePath = settings.includePath && settings.includePath !== '/' 
             ? settings.includePath 
             : (matrixFolder ? matrixFolder.path : '/');
+        log.log('PriorityMatrixView - resolved includePath:', includePath);
         const recursive = settings.recursive !== false;
         const todoTag = settings.todoTag || 'TODO';
         const maxFiles = settings.maxFiles || 99999;
@@ -317,7 +336,7 @@ export class PriorityMatrixView extends TextFileView {
             : this.app.vault.getAbstractFileByPath(normalized);
         
         if (!(includeRoot instanceof TFolder)) {
-            console.log('[PriorityMatrix] Invalid include path:', includePath);
+            log.log('Invalid include path:', includePath);
             return;
         }
 
@@ -396,7 +415,7 @@ export class PriorityMatrixView extends TextFileView {
             });
         });
         
-        console.log(`[PriorityMatrix] Found ${existingPaths.size} existing items in matrix`);
+        log.log(`Found ${existingPaths.size} existing items in matrix`);
 
         // Add new items
         const newItems = filteredResults
@@ -450,11 +469,76 @@ export class PriorityMatrixView extends TextFileView {
             // Re-render
             this.render();
             
-            console.log(`[PriorityMatrix] Added ${newItems.length} new TODO items`);
+            log.log(`Added ${newItems.length} new TODO items`);
         } else {
-            console.log('[PriorityMatrix] No new TODO items found');
+            log.log('No new TODO items found');
         }
     }
+
+    /**
+     * Get matrix settings modal
+     */
+    getMatrixSettings(): void {
+        if (!this.stateManager || !this.file) return;
+
+        const matrix = this.stateManager.getState();
+        if (!matrix) return;
+
+        new SettingsModal(
+            this,
+            {
+                onSettingsChange: (settings) => {
+                    const updatedMatrix: Matrix = {
+                        ...matrix,
+                        data: {
+                            ...matrix.data,
+                            settings: settings,
+                        },
+                    };
+
+                    // Save to disk
+                    this.stateManager?.setState(updatedMatrix);
+                    this.stateManager?.save();
+                },
+            },
+            matrix.data.settings
+        ).open();
+    }
+
+    /**
+     * Initialize header buttons (debounced)
+     */
+    private _initHeaderButtons = async () => {
+        if (Platform.isPhone) return;
+        if (!this.stateManager) return;
+
+        // Add settings button if it doesn't exist
+        if (!this.actionButtons['show-matrix-settings']) {
+            this.actionButtons['show-matrix-settings'] = this.addAction(
+                'lucide-settings',
+                'Open matrix settings',
+                () => {
+                    this.getMatrixSettings();
+                }
+            );
+        }
+    };
+
+    /**
+     * Debounced version of initHeaderButtons
+     */
+    initHeaderButtons = (() => {
+        let timeout: number | null = null;
+        return () => {
+            if (timeout !== null) {
+                clearTimeout(timeout);
+            }
+            timeout = window.setTimeout(() => {
+                this._initHeaderButtons();
+                timeout = null;
+            }, 10);
+        };
+    })();
 }
 
 function escapeRegExp(s: string): string {

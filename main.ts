@@ -1,5 +1,6 @@
 import { App, MarkdownPostProcessorContext, MarkdownView, Menu, Notice, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
 import { PriorityMatrixView, VIEW_TYPE_PRIORITY_MATRIX } from './src/views/PriorityMatrixView';
+import { createLogger } from './src/utils/logger';
 
 interface PriorityMatrixPluginSettings {
     includePath: string; // vault-relative folder path
@@ -19,6 +20,8 @@ const DEFAULT_SETTINGS: PriorityMatrixPluginSettings = {
     enableStrikethroughOnDone: true,
 }
 
+const log = createLogger('Plugin');
+
 export default class PriorityMatrixPlugin extends Plugin {
     settings: PriorityMatrixPluginSettings;
     private pendingMatrixFiles = new Set<string>();
@@ -33,7 +36,7 @@ export default class PriorityMatrixPlugin extends Plugin {
         // Register the custom view
         this.registerView(
             VIEW_TYPE_PRIORITY_MATRIX,
-            (leaf: WorkspaceLeaf) => new PriorityMatrixView(leaf)
+            (leaf: WorkspaceLeaf) => new PriorityMatrixView(leaf, this)
         );
 
         this.addCommand({
@@ -151,13 +154,13 @@ export default class PriorityMatrixPlugin extends Plugin {
         this.registerEvent(
             this.app.workspace.on('active-leaf-change', async (leaf) => {
                 if (!leaf || !leaf.view) {
-                    console.log('[PriorityMatrix] active-leaf-change: no leaf or view');
+                    log.log('active-leaf-change: no leaf or view');
                     return;
                 }
                 
                 const view = leaf.view;
                 const viewType = view.getViewType();
-                console.log('[PriorityMatrix] active-leaf-change event', {
+                log.log('active-leaf-change event', {
                     viewType,
                     isPriorityMatrixView: view instanceof PriorityMatrixView,
                     file: view instanceof MarkdownView ? view.file?.path : null
@@ -165,13 +168,13 @@ export default class PriorityMatrixPlugin extends Plugin {
                 
                 // Don't interfere if it's already a priority matrix view
                 if (view instanceof PriorityMatrixView) {
-                    console.log('[PriorityMatrix] active-leaf-change: already PriorityMatrixView, skipping');
+                    log.log('active-leaf-change: already PriorityMatrixView, skipping');
                     return;
                 }
                 
                 const file = view instanceof MarkdownView ? view.file : null;
                 if (!file) {
-                    console.log('[PriorityMatrix] active-leaf-change: no file');
+                    log.log('active-leaf-change: no file');
                     return;
                 }
                 
@@ -193,14 +196,14 @@ export default class PriorityMatrixPlugin extends Plugin {
                     
                     if (isMatrixFile && viewType === 'markdown') {
                         // Only auto-switch if it's a pending file (just opened) and currently in markdown view
-                        console.log('[PriorityMatrix] active-leaf-change: switching to matrix view (pending file)', {
+                        log.log('active-leaf-change: switching to matrix view (pending file)', {
                             filePath: file.path
                         });
                         await leaf.setViewState({
                             type: VIEW_TYPE_PRIORITY_MATRIX,
                             state: { file: file.path },
                         });
-                        console.log('[PriorityMatrix] active-leaf-change: view state changed to matrix');
+                        log.log('active-leaf-change: view state changed to matrix');
                         return; // Don't add markdown actions since we're switching
                     }
                 }
@@ -288,7 +291,9 @@ export default class PriorityMatrixPlugin extends Plugin {
     private async createPriorityMatrixInFolder(folder: TFolder) {
         const filename = await this.getNextMatrixFilename(folder);
         const content = await this.generateMatrixNoteContent(folder);
-        const file = await this.app.vault.create(`${folder.path}/${filename}`, content);
+        // Handle root folder (empty path) correctly
+        const filePath = folder.path ? `${folder.path}/${filename}` : filename;
+        const file = await this.app.vault.create(filePath, content);
         await this.openAsMatrixView(file);
         new Notice('Priority matrix note created');
     }
@@ -325,7 +330,10 @@ export default class PriorityMatrixPlugin extends Plugin {
         const checklistFromScan = scannedTodos.map((p) => `- [ ] [[${p}]]`);
 
         // Default to the folder where the matrix note is created
-        const effectiveIncludePath = folder.path;
+        // Normalize empty string (root folder) to "/" for consistency
+        log.log('Creating note - folder.path:', folder.path, 'folder.name:', folder.name);
+        const effectiveIncludePath = folder.path || '/';
+        log.log('Creating note - effectiveIncludePath:', effectiveIncludePath);
 
         const settingsJson = {
             includePath: effectiveIncludePath,
@@ -366,7 +374,9 @@ export default class PriorityMatrixPlugin extends Plugin {
         lines.push(`## ${headings[6]}`);
         lines.push('');
         lines.push('```json');
-        lines.push(JSON.stringify(settingsJson, null, 2));
+        const settingsJsonString = JSON.stringify(settingsJson, null, 2);
+        log.log('Creating note - settingsJson to be saved:', settingsJsonString);
+        lines.push(settingsJsonString);
         lines.push('```');
         lines.push('');
 
@@ -446,7 +456,7 @@ export default class PriorityMatrixPlugin extends Plugin {
                 // Modify with same content to trigger file change event
                 await this.app.vault.modify(file, content);
             } catch (error) {
-                console.error('[PriorityMatrix] Error refreshing markdown view:', error);
+                log.error('Error refreshing markdown view:', error);
             }
         });
         

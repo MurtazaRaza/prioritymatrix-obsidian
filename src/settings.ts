@@ -11,9 +11,15 @@ export const DEFAULT_SETTINGS: MatrixSettings = {
 };
 
 export function parseSettingsFromJson(jsonStr: string): MatrixSettings {
-    try {
+  try {
         const parsed = JSON.parse(jsonStr);
-        return Object.assign({}, DEFAULT_SETTINGS, parsed);
+        const settings = Object.assign({}, DEFAULT_SETTINGS, parsed);
+        console.log('[PriorityMatrix] Parsing settings JSON - after Object.assign, settings.includePath:', settings.includePath);
+        // Normalize empty string includePath to "/" for consistency
+        if (settings.includePath === '') {
+            settings.includePath = '/';
+        }
+        return settings;
     } catch (e) {
         return DEFAULT_SETTINGS;
     }

@@ -1,6 +1,9 @@
 import { App, TFile } from 'obsidian';
 import { Matrix, Item } from '../types';
 import { mdToMatrix, matrixToMd } from '../parsers/MatrixFormat';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('StateManager');
 
 export class StateManager {
     private app: App;
@@ -68,33 +71,33 @@ export class StateManager {
      */
     async save(): Promise<void> {
         const stackTrace = new Error().stack;
-        console.log('[PriorityMatrix] StateManager.save() called', {
+        log.log('save() called', {
             file: this.file.path,
             hasState: !!this.state,
             stackTrace: stackTrace?.split('\n').slice(1, 5).join('\n')
         });
 
         if (!this.state) {
-            console.log('[PriorityMatrix] StateManager.save() aborted - no state');
+            log.log('save() aborted - no state');
             return;
         }
 
         this.isSaving = true;
         try {
             const md = matrixToMd(this.state);
-            console.log('[PriorityMatrix] StateManager.save() modifying file', {
+            log.log('save() modifying file', {
                 file: this.file.path,
                 mdLength: md.length,
                 mdPreview: md.substring(0, 200)
             });
             await this.app.vault.modify(this.file, md);
-            console.log('[PriorityMatrix] StateManager.save() file modified, waiting 100ms');
+            log.log('save() file modified, waiting 100ms');
             // Brief delay to allow file change event to propagate
             await new Promise(resolve => setTimeout(resolve, 100));
-            console.log('[PriorityMatrix] StateManager.save() delay completed, setting isSaving=false');
+            log.log('save() delay completed, setting isSaving=false');
         } finally {
             this.isSaving = false;
-            console.log('[PriorityMatrix] StateManager.save() completed');
+            log.log('save() completed');
         }
     }
 

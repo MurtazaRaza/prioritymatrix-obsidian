@@ -234,9 +234,9 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
 
     return (
         <div className="priority-matrix-container">
-            <div className="priority-matrix-toolbar">
+            {/* <div className="priority-matrix-toolbar">
                 <div className="priority-matrix-title">Eisenhower Matrix</div>
-            </div>
+            </div> */}
             <div className="priority-matrix-grid">
                 <div
                     className="pmx-bank-wrapper"
