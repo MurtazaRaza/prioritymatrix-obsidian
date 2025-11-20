@@ -10,13 +10,14 @@ interface TodoBankProps {
     collapsed: boolean;
     onToggleCollapse: () => void;
     onItemClick?: (item: Item) => void;
-    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
-    onDragEnd?: (e: DragEvent) => void;
+    onPointerDragStart?: (itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', pointer: PointerEvent) => void;
+    onPointerDragMove?: (pointer: PointerEvent) => void;
+    onPointerDragEnd?: () => void;
     stateManager: StateManager;
     app: App;
 }
 
-export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onDragStart, onDragEnd, stateManager, app }: TodoBankProps) {
+export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onPointerDragStart, onPointerDragMove, onPointerDragEnd, stateManager, app }: TodoBankProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [newItemText, setNewItemText] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
@@ -155,8 +156,9 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onDr
                     <Items
                         items={items}
                         onItemClick={onItemClick}
-                        onDragStart={onDragStart}
-                        onDragEnd={onDragEnd}
+                        onPointerDragStart={onPointerDragStart}
+                        onPointerDragMove={onPointerDragMove}
+                        onPointerDragEnd={onPointerDragEnd}
                         from="todo"
                         stateManager={stateManager}
                         app={app}

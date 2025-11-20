@@ -7,14 +7,15 @@ import { App } from 'obsidian';
 interface ItemsProps {
     items: Item[];
     onItemClick?: (item: Item) => void;
-    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
-    onDragEnd?: (e: DragEvent) => void;
+    onPointerDragStart?: (itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', pointer: PointerEvent) => void;
+    onPointerDragMove?: (pointer: PointerEvent) => void;
+    onPointerDragEnd?: () => void;
     from?: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done';
     stateManager: StateManager;
     app: App;
 }
 
-export function Items({ items, onItemClick, onDragStart, onDragEnd, from, stateManager, app }: ItemsProps) {
+export function Items({ items, onItemClick, onPointerDragStart, onPointerDragMove, onPointerDragEnd, from, stateManager, app }: ItemsProps) {
     return (
         <div className="pmx-list">
             {items.map((item) => (
@@ -22,8 +23,9 @@ export function Items({ items, onItemClick, onDragStart, onDragEnd, from, stateM
                     key={item.id}
                     item={item}
                     onItemClick={onItemClick}
-                    onDragStart={onDragStart}
-                    onDragEnd={onDragEnd}
+                    onPointerDragStart={onPointerDragStart}
+                    onPointerDragMove={onPointerDragMove}
+                    onPointerDragEnd={onPointerDragEnd}
                     from={from}
                     stateManager={stateManager}
                     app={app}

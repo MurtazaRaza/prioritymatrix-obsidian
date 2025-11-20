@@ -79,6 +79,8 @@ If your plugin does not need CSS, delete this file.
 
 .priority-matrix-view .pmx-bank-wrapper {
   grid-column: 1 / span 2; /* full width */
+  /* Allow touch events for drop zones */
+  touch-action: pan-y;
 }
 
 .priority-matrix-view .pmx-bank {
@@ -172,6 +174,8 @@ If your plugin does not need CSS, delete this file.
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Allow touch events for drop zones */
+  touch-action: pan-y;
 }
 
 .priority-matrix-view .pmx-cell-title {
@@ -233,6 +237,11 @@ If your plugin does not need CSS, delete this file.
   display: inline-block;
   width: fit-content;
   min-width: 0;
+  /* Enable touch dragging - allow pan-y for vertical scrolling when not dragging */
+  touch-action: pan-y;
+  /* Prevent text selection during drag */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .priority-matrix-view .pmx-item:hover {
@@ -244,6 +253,11 @@ If your plugin does not need CSS, delete this file.
 .priority-matrix-view .pmx-item.dragging {
   cursor: grabbing;
   opacity: 0.7;
+  /* Prevent all touch actions when dragging */
+  touch-action: none;
+  /* Prevent text selection during drag */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Item content wrapper */
@@ -401,6 +415,18 @@ If your plugin does not need CSS, delete this file.
   opacity: 0.3;
   transition: all 0.2s ease;
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Shift items to show where dragged item will land */
+/* Shift by approximate item height + gap to show where new item will be inserted */
+.priority-matrix-view .pmx-item-wrapper.pmx-shift-down {
+  transform: translateY(44px);
+  transition: transform 0.15s ease-out;
+}
+
+/* Drag overlay that follows pointer */
+.priority-matrix-view .pmx-drag-overlay {
+  pointer-events: none !important;
 }
 
 @keyframes pulse {

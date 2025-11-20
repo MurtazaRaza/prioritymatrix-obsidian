@@ -9,13 +9,14 @@ interface DoneBankProps {
     collapsed: boolean;
     onToggleCollapse: () => void;
     onItemClick?: (item: Item) => void;
-    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
-    onDragEnd?: (e: DragEvent) => void;
+    onPointerDragStart?: (itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', pointer: PointerEvent) => void;
+    onPointerDragMove?: (pointer: PointerEvent) => void;
+    onPointerDragEnd?: () => void;
     stateManager: StateManager;
     app: App;
 }
 
-export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick, onDragStart, onDragEnd, stateManager, app }: DoneBankProps) {
+export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick, onPointerDragStart, onPointerDragMove, onPointerDragEnd, stateManager, app }: DoneBankProps) {
     return (
         <>
             <div className="pmx-col-header">
@@ -41,8 +42,9 @@ export function DoneBank({ items, collapsed, onToggleCollapse, onItemClick, onDr
                     <Items
                         items={items}
                         onItemClick={onItemClick}
-                        onDragStart={onDragStart}
-                        onDragEnd={onDragEnd}
+                        onPointerDragStart={onPointerDragStart}
+                        onPointerDragMove={onPointerDragMove}
+                        onPointerDragEnd={onPointerDragEnd}
                         from="done"
                         stateManager={stateManager}
                         app={app}

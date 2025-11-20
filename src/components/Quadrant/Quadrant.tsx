@@ -7,13 +7,14 @@ import { App } from 'obsidian';
 interface QuadrantProps {
     quadrant: QuadrantType;
     onItemClick?: (item: Item) => void;
-    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
-    onDragEnd?: (e: DragEvent) => void;
+    onPointerDragStart?: (itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', pointer: PointerEvent) => void;
+    onPointerDragMove?: (pointer: PointerEvent) => void;
+    onPointerDragEnd?: () => void;
     stateManager: StateManager;
     app: App;
 }
 
-export function Quadrant({ quadrant, onItemClick, onDragStart, onDragEnd, stateManager, app }: QuadrantProps) {
+export function Quadrant({ quadrant, onItemClick, onPointerDragStart, onPointerDragMove, onPointerDragEnd, stateManager, app }: QuadrantProps) {
     return (
         <div className={`pmx-cell pmx-${quadrant.id}`}>
             <div className="pmx-cell-title">{quadrant.data.title}</div>
@@ -21,8 +22,9 @@ export function Quadrant({ quadrant, onItemClick, onDragStart, onDragEnd, stateM
                 <Items
                     items={quadrant.children}
                     onItemClick={onItemClick}
-                    onDragStart={onDragStart}
-                    onDragEnd={onDragEnd}
+                    onPointerDragStart={onPointerDragStart}
+                    onPointerDragMove={onPointerDragMove}
+                    onPointerDragEnd={onPointerDragEnd}
                     from={quadrant.id as 'q1' | 'q2' | 'q3' | 'q4'}
                     stateManager={stateManager}
                     app={app}

@@ -1,14 +1,17 @@
 import { h } from 'preact';
+import { useRef, useEffect } from 'preact/hooks';
 import { App, Menu, Modal, Setting, Notice } from 'obsidian';
 import { Item } from '../../types';
 import { StateManager } from '../../state/StateManager';
 import { createLogger } from '../../utils/logger';
+import { distanceBetween, rafThrottle, isTouchEvent, DRAG_CONSTANTS, Coordinates } from '../../utils/drag';
 
 interface ItemProps {
     item: Item;
     onItemClick?: (item: Item) => void;
-    onDragStart?: (e: DragEvent, itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done') => void;
-    onDragEnd?: (e: DragEvent) => void;
+    onPointerDragStart?: (itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', pointer: PointerEvent) => void;
+    onPointerDragMove?: (pointer: PointerEvent) => void;
+    onPointerDragEnd?: () => void;
     from?: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done';
     stateManager: StateManager;
     app: App;
@@ -39,12 +42,262 @@ class TodoLinkedRemoveModal extends Modal {
 
 const log = createLogger('ItemComponent');
 
-export function ItemComponent({ item, onItemClick, onDragStart, onDragEnd, from, stateManager, app }: ItemProps) {
-    const handleClick = () => {
+export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointerDragMove, onPointerDragEnd, from, stateManager, app }: ItemProps) {
+    const itemElementRef = useRef<HTMLElement | null>(null);
+    const isDraggingRef = useRef(false);
+    const pointerIdRef = useRef<number | null>(null);
+    const initialPositionRef = useRef<Coordinates | null>(null);
+    const longPressTimeoutRef = useRef<number | null>(null);
+    const currentPointerPositionRef = useRef<Coordinates | null>(null);
+    const initialTargetRef = useRef<HTMLElement | null>(null);
+    const wasDraggingRef = useRef(false);
+    const win = typeof window !== 'undefined' ? window : null;
+
+    const handleClick = (e?: MouseEvent) => {
+        // Prevent click if we were dragging
+        if (wasDraggingRef.current || isDraggingRef.current) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            return;
+        }
         if (onItemClick) {
             onItemClick(item);
         }
     };
+
+    // Cleanup function
+    const cleanup = () => {
+        if (longPressTimeoutRef.current !== null && win) {
+            win.clearTimeout(longPressTimeoutRef.current);
+            longPressTimeoutRef.current = null;
+        }
+        
+        // Remove event listeners
+        if (win) {
+            win.removeEventListener('pointermove', handlePointerMove);
+            win.removeEventListener('pointerup', handlePointerUp);
+            win.removeEventListener('pointercancel', handlePointerCancel);
+            win.removeEventListener('contextmenu', cancelContextMenu);
+            win.removeEventListener('touchmove', cancelTouchMove, { passive: false } as any);
+        }
+
+        // Remove dragging class
+        if (itemElementRef.current) {
+            itemElementRef.current.classList.remove('dragging');
+        }
+
+        // Restore body scroll
+        if (document.body) {
+            document.body.style.overflow = '';
+        }
+
+        const wasDragging = isDraggingRef.current;
+        isDraggingRef.current = false;
+        pointerIdRef.current = null;
+        initialPositionRef.current = null;
+        currentPointerPositionRef.current = null;
+        
+        // Keep wasDraggingRef for a short time to allow click events to check it
+        wasDraggingRef.current = wasDragging;
+        if (win) {
+            win.setTimeout(() => {
+                wasDraggingRef.current = false;
+                initialTargetRef.current = null;
+            }, 100);
+        }
+    };
+
+    const cancelContextMenu = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const cancelTouchMove = (e: TouchEvent) => {
+        if (isDraggingRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    };
+
+    const handlePointerMove = win ? rafThrottle(win, (e: PointerEvent) => {
+        // Only track the initial pointer
+        if (e.pointerId !== pointerIdRef.current) return;
+        if (!initialPositionRef.current) return;
+
+        const currentPosition: Coordinates = { x: e.pageX, y: e.pageY };
+        currentPointerPositionRef.current = currentPosition;
+        const distance = distanceBetween(initialPositionRef.current, currentPosition);
+        const isTouch = isTouchEvent(e);
+
+        // If not dragging yet, check if we should start or cancel
+        if (!isDraggingRef.current) {
+            if (isTouch) {
+                // For touch: cancel long press if movement exceeds threshold
+                if (distance > DRAG_CONSTANTS.MOVEMENT_THRESHOLD) {
+                    cleanup();
+                    return;
+                }
+            } else {
+                // For mouse: start drag immediately when movement exceeds threshold
+                if (distance > DRAG_CONSTANTS.MOVEMENT_THRESHOLD) {
+                    isDraggingRef.current = true;
+                    
+                    // Add dragging class
+                    if (itemElementRef.current) {
+                        itemElementRef.current.classList.add('dragging');
+                    }
+                    
+                    // Call drag start callback
+                    if (onPointerDragStart) {
+                        onPointerDragStart(item.id, from || 'q1', e);
+                    }
+                }
+            }
+        } else {
+            // Already dragging - update position
+            if (onPointerDragMove) {
+                onPointerDragMove(e);
+            }
+        }
+    }) : () => {};
+
+    const handlePointerUp = (e: PointerEvent) => {
+        if (e.pointerId !== pointerIdRef.current) return;
+        
+        const wasDragging = isDraggingRef.current;
+        const hadInitialPosition = !!initialPositionRef.current;
+        const wasClickOnLink = initialTargetRef.current?.closest('a') !== null;
+        
+        cleanup();
+
+        if (wasDragging && onPointerDragEnd) {
+            onPointerDragEnd();
+        } else if (!wasDragging && hadInitialPosition && !wasClickOnLink) {
+            // It was a tap, not a drag - trigger click
+            // Don't trigger if it was a click on a link (link's onClick will handle it)
+            handleClick();
+        }
+    };
+
+    const handlePointerCancel = (e: PointerEvent) => {
+        if (e.pointerId !== pointerIdRef.current) return;
+        
+        const wasDragging = isDraggingRef.current;
+        
+        cleanup();
+        
+        if (wasDragging && onPointerDragEnd) {
+            onPointerDragEnd();
+        }
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+        if (!win) return;
+        
+        // Ignore if event was already handled
+        if (e.defaultPrevented) return;
+        
+        const target = e.target as HTMLElement;
+        
+        // Ignore if clicking on menu button or elements with data-ignore-drag
+        if (target.closest('.pmx-item-menu-btn')) {
+            return;
+        }
+
+        // Check for data-ignore-drag attribute
+        let node: HTMLElement | null = target;
+        while (node) {
+            if (node.dataset.ignoreDrag) {
+                return;
+            }
+            node = node.parentElement;
+        }
+        
+        // Allow dragging from links, but we'll prevent the click if it was a drag
+        // The link's onClick will be prevented if isDraggingRef is true
+
+        // We only care about left mouse / touch contact
+        // https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
+        if (e.button !== 0 && e.buttons !== 1) {
+            return;
+        }
+
+        const isTouch = isTouchEvent(e);
+        
+        // For mouse events, prevent default immediately to prevent text selection
+        // This follows the Kanban approach of unified pointer event handling
+        if (!isTouch) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+
+        // Store initial state
+        pointerIdRef.current = e.pointerId;
+        initialPositionRef.current = { x: e.pageX, y: e.pageY };
+        currentPointerPositionRef.current = { x: e.pageX, y: e.pageY };
+        initialTargetRef.current = target;
+        isDraggingRef.current = false;
+
+        // Add event listeners to window
+        win.addEventListener('pointermove', handlePointerMove);
+        win.addEventListener('pointerup', handlePointerUp);
+        win.addEventListener('pointercancel', handlePointerCancel);
+
+        if (isTouch && win) {
+            // For touch: require 500ms long press
+            win.addEventListener('contextmenu', cancelContextMenu, true);
+            
+            longPressTimeoutRef.current = win.setTimeout(() => {
+                if (!initialPositionRef.current || pointerIdRef.current === null) return;
+                
+                // Start drag
+                isDraggingRef.current = true;
+                
+                // Add dragging class
+                if (itemElementRef.current) {
+                    itemElementRef.current.classList.add('dragging');
+                }
+                
+                // Prevent body scroll during drag
+                if (document.body) {
+                    document.body.style.overflow = 'hidden';
+                }
+                
+                // Add touchmove prevention
+                win.addEventListener('touchmove', cancelTouchMove, { passive: false });
+                
+                // Call drag start callback
+                if (onPointerDragStart) {
+                    onPointerDragStart(item.id, from || 'q1', e);
+                }
+            }, DRAG_CONSTANTS.LONG_PRESS_TIMEOUT);
+        } else {
+            // For mouse: start drag immediately on movement > 5px
+            // The movement will be handled in handlePointerMove
+        }
+    };
+
+    // Swallow touchstart to prevent event bubbling (like Kanban does)
+    const swallowTouchEvent = (e: TouchEvent) => {
+        e.stopPropagation();
+    };
+
+    // Cleanup on unmount and set up touchstart listener
+    useEffect(() => {
+        const element = itemElementRef.current;
+        if (!element || !win) return;
+        
+        element.addEventListener('touchstart', swallowTouchEvent);
+        
+        return () => {
+            cleanup();
+            if (element) {
+                element.removeEventListener('touchstart', swallowTouchEvent);
+            }
+        };
+    }, []);
 
     const handleMenuClick = (e: MouseEvent) => {
         e.preventDefault();
@@ -139,11 +392,11 @@ export function ItemComponent({ item, onItemClick, onDragStart, onDragEnd, from,
     return (
         <div className="pmx-item-wrapper">
             <div
+                ref={(el: HTMLElement | null) => { itemElementRef.current = el; }}
                 className="pmx-item"
-                draggable={true}
+                draggable={false}
                 data-item-id={item.id}
-                onDragStart={onDragStart ? (e) => onDragStart(e, item.id, from || 'q1') : undefined}
-                onDragEnd={onDragEnd}
+                onPointerDown={handlePointerDown}
             >
                 <div className="pmx-item-content-wrapper">
                     <div className="pmx-item-title-wrapper">
@@ -152,10 +405,16 @@ export function ItemComponent({ item, onItemClick, onDragStart, onDragEnd, from,
                                 href="#"
                                 className="pmx-item-title"
                                 onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (onItemClick) {
-                                        onItemClick(item);
+                                    // Only trigger click if we weren't dragging
+                                    if (!wasDraggingRef.current) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (onItemClick) {
+                                            onItemClick(item);
+                                        }
+                                    } else {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                     }
                                 }}
                             >
