@@ -321,7 +321,9 @@ export class PriorityMatrixView extends TextFileView {
         // Default to the folder where the matrix note is located
         const matrixFolder = this.file.parent;
         log.log('PriorityMatrixView - matrixFolder:', matrixFolder?.path || 'null');
-        const includePath = settings.includePath && settings.includePath !== '/' 
+        
+        // Respect explicit root path ('/') - don't default to matrix folder if user set it to '/'
+        const includePath = settings.includePath !== undefined && settings.includePath !== null && settings.includePath !== ''
             ? settings.includePath 
             : (matrixFolder ? matrixFolder.path : '/');
         log.log('PriorityMatrixView - resolved includePath:', includePath);
@@ -329,10 +331,12 @@ export class PriorityMatrixView extends TextFileView {
         const todoTag = settings.todoTag || 'TODO';
         const maxFiles = settings.maxFiles || 99999;
 
-        // Resolve include root folder - default to matrix note's folder
+        // Resolve include root folder
+        // If includePath is explicitly '/', use vault root
+        // Otherwise, normalize the path and resolve it
         const normalized = includePath === '/' ? '' : includePath.replace(/^\/*|\/*$/g, '');
         const includeRoot = normalized.length === 0 
-            ? (matrixFolder || this.app.vault.getRoot())
+            ? this.app.vault.getRoot()  // Always use vault root when path is '/' or empty
             : this.app.vault.getAbstractFileByPath(normalized);
         
         if (!(includeRoot instanceof TFolder)) {
