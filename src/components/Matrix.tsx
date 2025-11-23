@@ -19,42 +19,32 @@ interface MatrixProps {
 export function Matrix({ matrix, stateManager, app }: MatrixProps) {
     const [todoCollapsed, setTodoCollapsed] = useState(false);
     const [doneCollapsed, setDoneCollapsed] = useState(false);
+    
+    // Single source of truth for drag state that triggers renders
     const [dragState, setDragState] = useState<{
         draggedItemId: string | null;
-        draggedFrom: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done' | null;
-        hoverOverSection: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done' | null;
-        hoverOverItemId: string | null;
-        insertIndex: number | null;
         dragElement: HTMLElement | null;
         originPosition: Coordinates | null;
         pointerPosition: Coordinates | null;
     }>({
         draggedItemId: null,
-        draggedFrom: null,
-        hoverOverSection: null,
-        hoverOverItemId: null,
-        insertIndex: null,
         dragElement: null,
         originPosition: null,
         pointerPosition: null,
     });
 
+    // Ref for mutable drag state that doesn't need to trigger renders (except for final drop)
+    // We keep the essential state here for event handlers to access without closure staleness
     const touchDragStateRef = useRef<{
         itemId: string | null;
         from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done' | null;
         hoverOverSection: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done' | null;
         insertIndex: number | null;
-        dragElement: HTMLElement | null;
-        originPosition: Coordinates | null;
-        pointerPosition: Coordinates | null;
     }>({
         itemId: null,
         from: null,
         hoverOverSection: null,
         insertIndex: null,
-        dragElement: null,
-        originPosition: null,
-        pointerPosition: null,
     });
 
     const handleItemClick = useCallback((item: Item) => {
@@ -69,121 +59,55 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
     }, [app]);
 
     // Calculate insertion index based on pointer position
-    // Handles flex-wrap layout by considering both X and Y positions
+    // Simplified for robust flex-wrap handling
     const calculateInsertIndex = useCallback((containerElement: HTMLElement, mouseX: number, mouseY: number, draggedItemId: string): number => {
         const listElement = containerElement.querySelector('.pmx-list');
         if (!listElement) return -1;
 
-        // Get all items excluding the dragged one
-        const allItems = Array.from(listElement.querySelectorAll<HTMLElement>('.pmx-item-wrapper'));
+        // Get all items excluding the dragged one (if it's in the same list) and placeholders
+        const allItems = Array.from(listElement.querySelectorAll<HTMLElement>('.pmx-item-wrapper:not(.pmx-drop-placeholder)'));
         const items = allItems.filter(item => {
             const itemEl = item.querySelector('.pmx-item');
             const itemId = itemEl?.getAttribute('data-item-id');
+            // Exclude the dragged item only if it's being dragged (has dragging class) or by ID match
+            // But wait, we want to calculate index relative to *static* items.
+            // The dragged item might be in the DOM but hidden/moved.
             return itemId !== draggedItemId && !item.classList.contains('dragging');
         });
         
         if (items.length === 0) return 0;
 
-        // Get item positions with their rects
-        const itemsWithRects = items.map((item, index) => ({
-            item,
-            index,
-            rect: item.getBoundingClientRect()
-        }));
+        // Find the item that the pointer is "before"
+        // In a flex-wrap layout (LTR, Top-to-Bottom):
+        // An item is "after" the pointer if:
+        // 1. Its center Y is significantly below the pointer Y (next row)
+        // 2. OR Its center Y is roughly same as pointer Y (same row) AND its center X is right of pointer X
+        
+        const ROW_TOLERANCE = 20; // px
 
-        // For flex-wrap layout, we need to consider both X and Y positions
-        // Strategy: First find which row the pointer is on, then find position within that row
-        const pointerRowItems: Array<{ item: HTMLElement; index: number; rect: DOMRect }> = [];
-        const otherRowItems: Array<{ item: HTMLElement; index: number; rect: DOMRect }> = [];
-        
-        // Separate items by row based on Y position
-        // Use a more generous tolerance to account for varying item heights
-        const rowTolerance = 20; // Items within 20px vertically are considered same row
-        itemsWithRects.forEach(({ item, index, rect }) => {
-            const itemData = { item, index, rect };
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const rect = item.getBoundingClientRect();
+            const itemCenterX = rect.left + rect.width / 2;
             
-            // Check if pointer is on the same row as this item
-            // Consider the item's center Y position for better row detection
-            const itemCenterY = rect.top + rect.height / 2;
-            const pointerY = mouseY;
-            
-            if (pointerY >= rect.top - rowTolerance && pointerY <= rect.bottom + rowTolerance) {
-                pointerRowItems.push(itemData);
-            } else {
-                otherRowItems.push(itemData);
+            // Check if pointer is definitely above this item's row
+            if (mouseY < rect.top - ROW_TOLERANCE) {
+                return i;
             }
-        });
-        
-        // If pointer is on a row with items, find position within that row based on X
-        if (pointerRowItems.length > 0) {
-            // Sort by X position
-            pointerRowItems.sort((a, b) => a.rect.left - b.rect.left);
             
-            for (let i = 0; i < pointerRowItems.length; i++) {
-                const { rect, index } = pointerRowItems[i];
-                const itemCenterX = rect.left + rect.width / 2;
-                
-                // If pointer is to the left of this item's center, insert before it
+            // Check if pointer is in the same row
+            if (mouseY >= rect.top - ROW_TOLERANCE && mouseY <= rect.bottom + ROW_TOLERANCE) {
+                // If on same row, check X position
                 if (mouseX < itemCenterX) {
-                    return index;
+                    return i;
                 }
             }
             
-            // Pointer is to the right of all items on this row
-            // Insert after the last item on this row
-            const lastOnRow = pointerRowItems[pointerRowItems.length - 1];
-            const lastIndex = lastOnRow.index;
-            
-            // Check if there are items after this row
-            const itemsAfterRow = otherRowItems.filter(({ rect }) => rect.top > lastOnRow.rect.bottom);
-            if (itemsAfterRow.length > 0) {
-                // Sort by Y then X to find the first item on the next row
-                itemsAfterRow.sort((a, b) => {
-                    const yDiff = a.rect.top - b.rect.top;
-                    if (Math.abs(yDiff) < rowTolerance) {
-                        return a.rect.left - b.rect.left;
-                    }
-                    return yDiff;
-                });
-                return itemsAfterRow[0].index;
-            }
-            
-            // No items after this row, insert at end
-            return items.length;
+            // If pointer is below this item, continue to next item
         }
         
-        // Pointer is not on any row with items
-        // Find the closest item based on Y position, considering both above and below
-        let bestIndex = items.length;
-        let minDistance = Infinity;
-        
-        for (let i = 0; i < itemsWithRects.length; i++) {
-            const { rect, index } = itemsWithRects[i];
-            const itemCenterY = rect.top + rect.height / 2;
-            const distance = Math.abs(mouseY - itemCenterY);
-            
-            // If pointer is above this item's center, insert before it
-            if (mouseY < itemCenterY && distance < minDistance) {
-                minDistance = distance;
-                bestIndex = index;
-            }
-            // If pointer is below this item and it's the last item or next item is on a different row
-            else if (mouseY > rect.bottom) {
-                // Check if this is the last item in its row
-                const nextItem = itemsWithRects[i + 1];
-                if (!nextItem || Math.abs(nextItem.rect.top - rect.top) > rowTolerance) {
-                    // This is the last item on its row, insert after it
-                    if (i + 1 < items.length) {
-                        bestIndex = i + 1;
-                    } else {
-                        bestIndex = items.length;
-                    }
-                    break;
-                }
-            }
-        }
-        
-        return bestIndex;
+        // If we haven't returned yet, the pointer is after all items
+        return items.length;
     }, []);
 
     // HTML5 drag handlers removed - using unified pointer events instead
@@ -205,17 +129,10 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             from,
             hoverOverSection: null,
             insertIndex: null,
-            dragElement,
-            originPosition,
-            pointerPosition,
         };
         
         setDragState({
             draggedItemId: itemId,
-            draggedFrom: from,
-            hoverOverSection: null,
-            hoverOverItemId: null,
-            insertIndex: null,
             dragElement,
             originPosition,
             pointerPosition,
@@ -233,7 +150,6 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         
         // Update pointer position for drag overlay
         const pointerPosition = { x: pointer.pageX, y: pointer.pageY };
-        touchDragStateRef.current.pointerPosition = pointerPosition;
         
         // Update state to trigger re-render of DragOverlay
         setDragState(prev => ({
@@ -259,23 +175,10 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         }
         
         if (!dropZone) {
-            // Clear all drop indicators and shift classes if not over a valid drop zone
-            document.querySelectorAll('.pmx-item-wrapper').forEach(el => {
-                el.classList.remove('pmx-drop-before', 'pmx-drop-after', 'pmx-shift-right', 'pmx-shift-down');
-            });
+            // Clear all drop indicators and placeholders if not over a valid drop zone
             document.querySelectorAll('.pmx-drop-placeholder').forEach(el => el.remove());
             touchDragStateRef.current.hoverOverSection = null;
             touchDragStateRef.current.insertIndex = null;
-            setDragState(prev => ({
-                ...prev,
-                hoverOverSection: null,
-                hoverOverItemId: null,
-                insertIndex: null,
-                // Keep drag element and positions
-                dragElement: prev.dragElement,
-                originPosition: prev.originPosition,
-                pointerPosition: prev.pointerPosition,
-            }));
             return;
         }
 
@@ -305,20 +208,10 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         const targetElement = bankElement || dropZone;
         const insertIndex = calculateInsertIndex(targetElement, pointer.clientX, pointer.clientY, itemId);
 
-        // Update both state and ref
+        // Update ref
         touchDragStateRef.current.hoverOverSection = section;
         touchDragStateRef.current.insertIndex = insertIndex;
         
-        setDragState(prev => ({
-            ...prev,
-            hoverOverSection: section,
-            insertIndex,
-            // Keep drag element and positions
-            dragElement: prev.dragElement,
-            originPosition: prev.originPosition,
-            pointerPosition: prev.pointerPosition,
-        }));
-
         // Update visual feedback
         // For bank wrapper, we need to look inside the bank for the list
         let listElement = dropZone.querySelector('.pmx-list');
@@ -330,15 +223,12 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             }
         }
         
-        // First, clear all shift classes and placeholders from ALL lists to prevent accumulation
-        document.querySelectorAll('.pmx-item-wrapper').forEach(el => {
-            el.classList.remove('pmx-shift-down');
-        });
+        // Clear all placeholders from ALL lists to prevent accumulation
         document.querySelectorAll('.pmx-drop-placeholder').forEach(el => el.remove());
         
         if (listElement) {
-            // Get all items including dragged one to find original position
-            const allItems = Array.from(listElement.querySelectorAll<HTMLElement>('.pmx-item-wrapper'));
+            // Get all items excluding dragged one and existing placeholders
+            const allItems = Array.from(listElement.querySelectorAll<HTMLElement>('.pmx-item-wrapper:not(.pmx-drop-placeholder)'));
             const draggedItemId = touchDragStateRef.current.itemId;
             const items = allItems.filter(item => {
                 const itemEl = item.querySelector('.pmx-item');
@@ -346,126 +236,53 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                 return itemId !== draggedItemId && !item.classList.contains('dragging');
             });
             
-            // Remove drop indicators from this list only
-            allItems.forEach(el => {
-                el.classList.remove('pmx-drop-before', 'pmx-drop-after', 'pmx-shift-right');
-            });
-
-            if (items.length > 0 && insertIndex >= 0 && insertIndex <= items.length) {
-                // Find the dragged item's original index in the full list
-                let draggedOriginalIndex = -1;
-                if (draggedItemId) {
-                    draggedOriginalIndex = allItems.findIndex(item => {
-                        const itemEl = item.querySelector('.pmx-item');
-                        return itemEl?.getAttribute('data-item-id') === draggedItemId;
-                    });
-                }
-                
-                // Calculate effective insert index accounting for the dragged item being removed
-                const isMovingWithinSameSection = from === section && draggedOriginalIndex >= 0;
-                let effectiveInsertIndex = insertIndex;
-                
-                if (isMovingWithinSameSection && draggedOriginalIndex >= 0) {
-                    // When moving within same section, we need to account for the item being removed from the list
-                    // The items array doesn't include the dragged item, so we need to adjust
-                    if (insertIndex > draggedOriginalIndex) {
-                        // Inserting after original position - no adjustment needed since dragged item is already excluded
-                        effectiveInsertIndex = insertIndex;
-                    } else if (insertIndex <= draggedOriginalIndex) {
-                        // Inserting before or at original position - no adjustment needed
-                        effectiveInsertIndex = insertIndex;
-                    }
-                }
-                
-                // Determine the Y position where the item will be inserted
-                // This is used to shift items that are visually below the insertion point
-                const targetInsertItem = effectiveInsertIndex < items.length ? items[effectiveInsertIndex] : null;
-                const targetRect = targetInsertItem ? targetInsertItem.getBoundingClientRect() : null;
-                
-                // Calculate the Y threshold for shifting
-                // Items below this Y position should be shifted down
-                let insertYThreshold: number;
-                if (targetRect) {
-                    // Inserting before an item - use its top position
-                    insertYThreshold = targetRect.top;
-                } else if (items.length > 0) {
-                    // Inserting at the end - use the bottom of the last item
-                    const lastItemRect = items[items.length - 1].getBoundingClientRect();
-                    insertYThreshold = lastItemRect.bottom;
-                } else {
-                    // Empty list - use pointer position
-                    insertYThreshold = pointer.clientY;
-                }
-                
-                // Shift items based on their visual position
-                // This is important for flex-wrap layouts where items can wrap to new rows
-                const rowTolerance = 20;
-                items.forEach((item, index) => {
+            // Find the dragged item's original index in the full list
+            let draggedOriginalIndex = -1;
+            if (draggedItemId) {
+                draggedOriginalIndex = allItems.findIndex(item => {
                     const itemEl = item.querySelector('.pmx-item');
-                    const itemId = itemEl?.getAttribute('data-item-id');
-                    
-                    // Don't shift the dragged item itself
-                    if (itemId === draggedItemId) {
-                        return;
-                    }
-                    
-                    const rect = item.getBoundingClientRect();
-                    const itemTop = rect.top;
-                    const itemBottom = rect.bottom;
-                    
-                    // Determine if this item should be shifted
-                    let shouldShift = false;
-                    
-                    if (targetRect) {
-                        // We have a target insertion item
-                        const isOnInsertionRow = Math.abs(itemTop - targetRect.top) < rowTolerance;
-                        
-                        if (isOnInsertionRow) {
-                            // Item is on the same row as insertion
-                            // Shift if it's at or after the insertion index
-                            shouldShift = index >= effectiveInsertIndex;
-                        } else if (itemTop > insertYThreshold + rowTolerance) {
-                            // Item is visually below the insertion point - always shift
-                            shouldShift = true;
-                        }
-                    } else {
-                        // No target item (inserting at end)
-                        // Shift items at or after the insertion index
-                        shouldShift = index >= effectiveInsertIndex;
-                    }
-                    
-                    if (shouldShift) {
-                        item.classList.add('pmx-shift-down');
-                    }
+                    return itemEl?.getAttribute('data-item-id') === draggedItemId;
                 });
-                
-                // Show a placeholder for visual clarity
-                const placeholder = document.createElement('div');
-                placeholder.className = 'pmx-drop-placeholder';
-                // Set a reasonable height based on typical item height
-                placeholder.style.height = '40px';
-                placeholder.style.minHeight = '40px';
-
-                if (effectiveInsertIndex < items.length && items[effectiveInsertIndex]) {
-                    // Insert before this item
-                    const insertTargetItem = items[effectiveInsertIndex];
-                    const parent = insertTargetItem.parentNode;
-                    if (parent) {
-                        parent.insertBefore(placeholder, insertTargetItem);
-                        insertTargetItem.classList.add('pmx-drop-before');
-                    }
-                } else if (items.length > 0) {
-                    // Inserting at the end
-                    const lastItem = items[items.length - 1];
-                    const parent = lastItem.parentNode;
-                    if (parent) {
-                        parent.appendChild(placeholder);
-                        lastItem.classList.add('pmx-drop-after');
-                    }
-                } else if (listElement) {
-                    // Empty list, just add placeholder
-                    listElement.appendChild(placeholder);
+            }
+            
+            // Calculate effective insert index
+            const isMovingWithinSameSection = from === section && draggedOriginalIndex >= 0;
+            let effectiveInsertIndex = insertIndex;
+            
+            if (isMovingWithinSameSection && draggedOriginalIndex >= 0) {
+                // When moving within same section, we need to account for the item being removed from the list
+                if (insertIndex > draggedOriginalIndex) {
+                    // Inserting after original position
+                    effectiveInsertIndex = insertIndex;
+                } else if (insertIndex <= draggedOriginalIndex) {
+                    // Inserting before or at original position
+                    effectiveInsertIndex = insertIndex;
                 }
+            }
+            
+            // Create and insert placeholder
+            const placeholder = document.createElement('div');
+            placeholder.className = 'pmx-drop-placeholder';
+            placeholder.style.height = '40px';
+            placeholder.style.minHeight = '40px';
+
+            if (effectiveInsertIndex < items.length && items[effectiveInsertIndex]) {
+                // Insert before this item
+                const insertTargetItem = items[effectiveInsertIndex];
+                const parent = insertTargetItem.parentNode;
+                if (parent) {
+                    parent.insertBefore(placeholder, insertTargetItem);
+                }
+            } else if (items.length > 0) {
+                // Inserting at the end
+                const lastItem = items[items.length - 1];
+                const parent = lastItem.parentNode;
+                if (parent) {
+                    parent.appendChild(placeholder);
+                }
+            } else if (listElement) {
+                // Empty list, just add placeholder
+                listElement.appendChild(placeholder);
             }
         }
     }, [calculateInsertIndex]);
@@ -480,10 +297,6 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             // Reset state
             setDragState({
                 draggedItemId: null,
-                draggedFrom: null,
-                hoverOverSection: null,
-                hoverOverItemId: null,
-                insertIndex: null,
                 dragElement: null,
                 originPosition: null,
                 pointerPosition: null,
@@ -493,9 +306,6 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                 from: null, 
                 hoverOverSection: null, 
                 insertIndex: null,
-                dragElement: null,
-                originPosition: null,
-                pointerPosition: null,
             };
             return;
         }
@@ -505,10 +315,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             el.classList.remove('dragging');
         });
         
-        // Clear all drop indicators, placeholders, and shift classes
-        document.querySelectorAll('.pmx-item-wrapper.pmx-drop-before, .pmx-item-wrapper.pmx-drop-after, .pmx-item-wrapper.pmx-shift-right').forEach(el => {
-            el.classList.remove('pmx-drop-before', 'pmx-drop-after', 'pmx-shift-right');
-        });
+        // Clear all placeholders
         document.querySelectorAll('.pmx-drop-placeholder').forEach(el => el.remove());
 
         // Perform the move if we have a valid target
@@ -519,15 +326,40 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                 stateManager.moveItem(itemId, from, to);
             }
             stateManager.save();
+        } else if (to === from && insertIndex !== null && insertIndex >= 0) {
+            // Reorder within same section
+            // Need to adjust index if moving forwards in list
+            let finalIndex = insertIndex;
+            
+            // Find the original index to compare
+            let originalIndex = -1;
+            const currentState = stateManager.getState();
+            if (currentState) {
+                let items: Item[] = [];
+                if (from === 'todo') items = currentState.data.banks.todo;
+                else if (from === 'done') items = currentState.data.banks.done;
+                else {
+                    const quadrant = currentState.children.find(q => q.id === from);
+                    if (quadrant) items = quadrant.children;
+                }
+                
+                originalIndex = items.findIndex(i => i.id === itemId);
+            }
+
+            if (originalIndex >= 0 && insertIndex > originalIndex) {
+                // If inserting after original position, we need to increment index
+                // because insertIndex is calculated based on filtered list (without dragged item)
+                // but StateManager expects index in original list
+                finalIndex = insertIndex + 1;
+            }
+
+            stateManager.moveItem(itemId, from, to, finalIndex);
+            stateManager.save();
         }
 
         // Reset state
         setDragState({
             draggedItemId: null,
-            draggedFrom: null,
-            hoverOverSection: null,
-            hoverOverItemId: null,
-            insertIndex: null,
             dragElement: null,
             originPosition: null,
             pointerPosition: null,
@@ -537,9 +369,6 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             from: null, 
             hoverOverSection: null, 
             insertIndex: null,
-            dragElement: null,
-            originPosition: null,
-            pointerPosition: null,
         };
     }, [stateManager]);
 
@@ -664,5 +493,3 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         </div>
     );
 }
-
-

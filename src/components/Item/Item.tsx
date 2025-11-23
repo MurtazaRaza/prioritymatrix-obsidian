@@ -1,5 +1,5 @@
 import { h } from 'preact';
-import { useRef, useEffect } from 'preact/hooks';
+import { useRef, useEffect, useCallback, useMemo } from 'preact/hooks';
 import { App, Menu, Modal, Setting, Notice } from 'obsidian';
 import { Item } from '../../types';
 import { StateManager } from '../../state/StateManager';
@@ -53,7 +53,13 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
     const wasDraggingRef = useRef(false);
     const win = typeof window !== 'undefined' ? window : null;
 
-    const handleClick = (e?: MouseEvent) => {
+    // Store latest props in ref to avoid re-creating event handlers
+    const latestPropsRef = useRef({ item, onItemClick, onPointerDragStart, onPointerDragMove, onPointerDragEnd, from, stateManager, app });
+    useEffect(() => {
+        latestPropsRef.current = { item, onItemClick, onPointerDragStart, onPointerDragMove, onPointerDragEnd, from, stateManager, app };
+    });
+
+    const handleClick = useCallback((e?: MouseEvent) => {
         // Prevent click if we were dragging
         if (wasDraggingRef.current || isDraggingRef.current) {
             if (e) {
@@ -62,13 +68,109 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
             }
             return;
         }
-        if (onItemClick) {
-            onItemClick(item);
+        if (latestPropsRef.current.onItemClick) {
+            latestPropsRef.current.onItemClick(latestPropsRef.current.item);
         }
-    };
+    }, []);
+
+    const cancelContextMenu = useCallback((e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
+    const cancelTouchMove = useCallback((e: TouchEvent) => {
+        if (isDraggingRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, []);
+
+    // Define handlers first so they can be used in cleanup
+    // We use useMemo for handlePointerMove to handle throttling
+    const handlePointerMove = useMemo(() => {
+        if (!win) return () => {};
+        
+        return rafThrottle(win, (e: PointerEvent) => {
+            // Only track the initial pointer
+            if (e.pointerId !== pointerIdRef.current) return;
+            if (!initialPositionRef.current) return;
+
+            const currentPosition: Coordinates = { x: e.pageX, y: e.pageY };
+            currentPointerPositionRef.current = currentPosition;
+            const distance = distanceBetween(initialPositionRef.current, currentPosition);
+            const isTouch = isTouchEvent(e);
+
+            // If not dragging yet, check if we should start or cancel
+            if (!isDraggingRef.current) {
+                if (isTouch) {
+                    // For touch: cancel long press if movement exceeds threshold
+                    if (distance > DRAG_CONSTANTS.MOVEMENT_THRESHOLD) {
+                        // We need to trigger cleanup here, but cleanup isn't defined yet
+                        // So we'll implement the cleanup logic directly or call a ref
+                        if (cleanupRef.current) cleanupRef.current();
+                        return;
+                    }
+                } else {
+                    // For mouse: start drag immediately when movement exceeds threshold
+                    if (distance > DRAG_CONSTANTS.MOVEMENT_THRESHOLD) {
+                        isDraggingRef.current = true;
+                        
+                        // Add dragging class
+                        if (itemElementRef.current) {
+                            itemElementRef.current.classList.add('dragging');
+                        }
+                        
+                        // Call drag start callback
+                        if (latestPropsRef.current.onPointerDragStart) {
+                            latestPropsRef.current.onPointerDragStart(
+                                latestPropsRef.current.item.id, 
+                                latestPropsRef.current.from || 'q1', 
+                                e
+                            );
+                        }
+                    }
+                }
+            } else {
+                // Already dragging - update position
+                if (latestPropsRef.current.onPointerDragMove) {
+                    latestPropsRef.current.onPointerDragMove(e);
+                }
+            }
+        });
+    }, [win]);
+
+    const handlePointerUp = useCallback((e: PointerEvent) => {
+        if (e.pointerId !== pointerIdRef.current) return;
+        
+        const wasDragging = isDraggingRef.current;
+        const hadInitialPosition = !!initialPositionRef.current;
+        const wasClickOnLink = initialTargetRef.current?.closest('a') !== null;
+        
+        if (cleanupRef.current) cleanupRef.current();
+
+        if (wasDragging && latestPropsRef.current.onPointerDragEnd) {
+            latestPropsRef.current.onPointerDragEnd();
+        } else if (!wasDragging && hadInitialPosition && !wasClickOnLink) {
+            // It was a tap, not a drag - trigger click
+            // Don't trigger if it was a click on a link (link's onClick will handle it)
+            handleClick();
+        }
+    }, [handleClick]);
+
+    const handlePointerCancel = useCallback((e: PointerEvent) => {
+        if (e.pointerId !== pointerIdRef.current) return;
+        
+        const wasDragging = isDraggingRef.current;
+        
+        if (cleanupRef.current) cleanupRef.current();
+        
+        if (wasDragging && latestPropsRef.current.onPointerDragEnd) {
+            latestPropsRef.current.onPointerDragEnd();
+        }
+    }, []);
 
     // Cleanup function
-    const cleanup = () => {
+    const cleanup = useCallback(() => {
         if (longPressTimeoutRef.current !== null && win) {
             win.clearTimeout(longPressTimeoutRef.current);
             longPressTimeoutRef.current = null;
@@ -79,7 +181,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
             win.removeEventListener('pointermove', handlePointerMove);
             win.removeEventListener('pointerup', handlePointerUp);
             win.removeEventListener('pointercancel', handlePointerCancel);
-            win.removeEventListener('contextmenu', cancelContextMenu);
+            win.removeEventListener('contextmenu', cancelContextMenu, true); // Capture phase must match
             win.removeEventListener('touchmove', cancelTouchMove, { passive: false } as any);
         }
 
@@ -107,93 +209,15 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                 initialTargetRef.current = null;
             }, 100);
         }
-    };
+    }, [win, handlePointerMove, handlePointerUp, handlePointerCancel, cancelContextMenu, cancelTouchMove]);
 
-    const cancelContextMenu = (e: Event) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
+    // Store cleanup in a ref so it can be called from handlePointerMove
+    const cleanupRef = useRef(cleanup);
+    useEffect(() => {
+        cleanupRef.current = cleanup;
+    }, [cleanup]);
 
-    const cancelTouchMove = (e: TouchEvent) => {
-        if (isDraggingRef.current) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    };
-
-    const handlePointerMove = win ? rafThrottle(win, (e: PointerEvent) => {
-        // Only track the initial pointer
-        if (e.pointerId !== pointerIdRef.current) return;
-        if (!initialPositionRef.current) return;
-
-        const currentPosition: Coordinates = { x: e.pageX, y: e.pageY };
-        currentPointerPositionRef.current = currentPosition;
-        const distance = distanceBetween(initialPositionRef.current, currentPosition);
-        const isTouch = isTouchEvent(e);
-
-        // If not dragging yet, check if we should start or cancel
-        if (!isDraggingRef.current) {
-            if (isTouch) {
-                // For touch: cancel long press if movement exceeds threshold
-                if (distance > DRAG_CONSTANTS.MOVEMENT_THRESHOLD) {
-                    cleanup();
-                    return;
-                }
-            } else {
-                // For mouse: start drag immediately when movement exceeds threshold
-                if (distance > DRAG_CONSTANTS.MOVEMENT_THRESHOLD) {
-                    isDraggingRef.current = true;
-                    
-                    // Add dragging class
-                    if (itemElementRef.current) {
-                        itemElementRef.current.classList.add('dragging');
-                    }
-                    
-                    // Call drag start callback
-                    if (onPointerDragStart) {
-                        onPointerDragStart(item.id, from || 'q1', e);
-                    }
-                }
-            }
-        } else {
-            // Already dragging - update position
-            if (onPointerDragMove) {
-                onPointerDragMove(e);
-            }
-        }
-    }) : () => {};
-
-    const handlePointerUp = (e: PointerEvent) => {
-        if (e.pointerId !== pointerIdRef.current) return;
-        
-        const wasDragging = isDraggingRef.current;
-        const hadInitialPosition = !!initialPositionRef.current;
-        const wasClickOnLink = initialTargetRef.current?.closest('a') !== null;
-        
-        cleanup();
-
-        if (wasDragging && onPointerDragEnd) {
-            onPointerDragEnd();
-        } else if (!wasDragging && hadInitialPosition && !wasClickOnLink) {
-            // It was a tap, not a drag - trigger click
-            // Don't trigger if it was a click on a link (link's onClick will handle it)
-            handleClick();
-        }
-    };
-
-    const handlePointerCancel = (e: PointerEvent) => {
-        if (e.pointerId !== pointerIdRef.current) return;
-        
-        const wasDragging = isDraggingRef.current;
-        
-        cleanup();
-        
-        if (wasDragging && onPointerDragEnd) {
-            onPointerDragEnd();
-        }
-    };
-
-    const handlePointerDown = (e: PointerEvent) => {
+    const handlePointerDown = useCallback((e: PointerEvent) => {
         if (!win) return;
         
         // Ignore if event was already handled
@@ -216,10 +240,8 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
         }
         
         // Allow dragging from links, but we'll prevent the click if it was a drag
-        // The link's onClick will be prevented if isDraggingRef is true
 
         // We only care about left mouse / touch contact
-        // https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events#determining_button_states
         if (e.button !== 0 && e.buttons !== 1) {
             return;
         }
@@ -227,7 +249,6 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
         const isTouch = isTouchEvent(e);
         
         // For mouse events, prevent default immediately to prevent text selection
-        // This follows the Kanban approach of unified pointer event handling
         if (!isTouch) {
             e.stopPropagation();
             e.preventDefault();
@@ -269,20 +290,21 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                 win.addEventListener('touchmove', cancelTouchMove, { passive: false });
                 
                 // Call drag start callback
-                if (onPointerDragStart) {
-                    onPointerDragStart(item.id, from || 'q1', e);
+                if (latestPropsRef.current.onPointerDragStart) {
+                    latestPropsRef.current.onPointerDragStart(
+                        latestPropsRef.current.item.id, 
+                        latestPropsRef.current.from || 'q1', 
+                        e
+                    );
                 }
             }, DRAG_CONSTANTS.LONG_PRESS_TIMEOUT);
-        } else {
-            // For mouse: start drag immediately on movement > 5px
-            // The movement will be handled in handlePointerMove
         }
-    };
+    }, [win, handlePointerMove, handlePointerUp, handlePointerCancel, cancelContextMenu, cancelTouchMove]);
 
     // Swallow touchstart to prevent event bubbling (like Kanban does)
-    const swallowTouchEvent = (e: TouchEvent) => {
+    const swallowTouchEvent = useCallback((e: TouchEvent) => {
         e.stopPropagation();
-    };
+    }, []);
 
     // Cleanup on unmount and set up touchstart listener
     useEffect(() => {
@@ -292,14 +314,14 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
         element.addEventListener('touchstart', swallowTouchEvent);
         
         return () => {
-            cleanup();
+            if (cleanupRef.current) cleanupRef.current();
             if (element) {
                 element.removeEventListener('touchstart', swallowTouchEvent);
             }
         };
-    }, []);
+    }, [swallowTouchEvent]); // Dependencies stable
 
-    const handleMenuClick = (e: MouseEvent) => {
+    const handleMenuClick = useCallback((e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         const coords = { x: e.clientX, y: e.clientY };
@@ -310,6 +332,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                 i.setIcon('lucide-trash-2')
                     .setTitle('Remove')
                     .onClick(() => {
+                        const { item, from, stateManager, app } = latestPropsRef.current;
                         const isLinked = !!item.data.metadata.fileAccessor;
                         const section = (from || 'q1');
                         if (!isLinked) {
@@ -387,7 +410,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
             });
 
         menu.showAtPosition(coords);
-    };
+    }, []);
 
     return (
         <div className="pmx-item-wrapper">
@@ -409,8 +432,8 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                                     if (!wasDraggingRef.current) {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        if (onItemClick) {
-                                            onItemClick(item);
+                                        if (latestPropsRef.current.onItemClick) {
+                                            latestPropsRef.current.onItemClick(latestPropsRef.current.item);
                                         }
                                     } else {
                                         e.preventDefault();
@@ -441,4 +464,3 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
         </div>
     );
 }
-

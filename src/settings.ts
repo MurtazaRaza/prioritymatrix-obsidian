@@ -14,7 +14,6 @@ export function parseSettingsFromJson(jsonStr: string): MatrixSettings {
   try {
         const parsed = JSON.parse(jsonStr);
         const settings = Object.assign({}, DEFAULT_SETTINGS, parsed);
-        console.log('[PriorityMatrix] Parsing settings JSON - after Object.assign, settings.includePath:', settings.includePath);
         // Normalize empty string includePath to "/" for consistency
         if (settings.includePath === '') {
             settings.includePath = '/';

@@ -80,7 +80,7 @@ If your plugin does not need CSS, delete this file.
 .priority-matrix-view .pmx-bank-wrapper {
   grid-column: 1 / span 2; /* full width */
   /* Allow touch events for drop zones */
-  touch-action: pan-y;
+  touch-action: manipulation;
 }
 
 .priority-matrix-view .pmx-bank {
@@ -175,7 +175,7 @@ If your plugin does not need CSS, delete this file.
   flex-direction: column;
   overflow: hidden;
   /* Allow touch events for drop zones */
-  touch-action: pan-y;
+  touch-action: manipulation;
 }
 
 .priority-matrix-view .pmx-cell-title {
@@ -238,7 +238,7 @@ If your plugin does not need CSS, delete this file.
   width: fit-content;
   min-width: 0;
   /* Enable touch dragging - allow pan-y for vertical scrolling when not dragging */
-  touch-action: pan-y;
+  touch-action: manipulation;
   /* Prevent text selection during drag */
   user-select: none;
   -webkit-user-select: none;
@@ -312,6 +312,12 @@ If your plugin does not need CSS, delete this file.
   color: var(--link-color, var(--link-color-external, var(--interactive-accent)));
   text-decoration: none;
   cursor: pointer;
+  /* Prevent iOS context menu on long press for easier dragging */
+  -webkit-touch-callout: none;
+  /* Prevent dragging the link itself as a URL */
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .priority-matrix-view .pmx-item-title[href]:hover {
@@ -400,10 +406,7 @@ If your plugin does not need CSS, delete this file.
 }
 
 /* Visual shift for items that will move when item is inserted */
-.priority-matrix-view .pmx-item-wrapper.pmx-shift-right {
-  transform: translateX(46px);
-  transition: transform 0.2s ease;
-}
+/* .pmx-shift-right removed */
 
 /* Placeholder showing where item will be dropped */
 .priority-matrix-view .pmx-drop-placeholder {
@@ -419,10 +422,7 @@ If your plugin does not need CSS, delete this file.
 
 /* Shift items to show where dragged item will land */
 /* Shift by approximate item height + gap to show where new item will be inserted */
-.priority-matrix-view .pmx-item-wrapper.pmx-shift-down {
-  transform: translateY(44px);
-  transition: transform 0.15s ease-out;
-}
+/* .pmx-shift-down removed as we now use placeholder element for layout reflow */
 
 /* Drag overlay that follows pointer */
 .priority-matrix-view .pmx-drag-overlay {
