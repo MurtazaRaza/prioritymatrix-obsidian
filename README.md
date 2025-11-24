@@ -5,7 +5,7 @@ An Obsidian plugin that creates and manages Eisenhower priority matrix notes wit
 ## Features
 
 - **Eisenhower Matrix View**: Visualize your tasks in a 2x2 priority matrix (Urgent/Important, Urgent/Not Important, Not Urgent/Important, Not Urgent/Not Important)
-- **Automatic TODO Sourcing**: Automatically scans your vault for tasks tagged with `#TODO` and displays them in the matrix
+- **Automatic TODO Sourcing**: Automatically scans your vault for tasks tagged with `#TODO` and displays them in the matrix, or you can add your own tag to scan
 - **Interactive Task Management**: Drag and drop tasks between quadrants to reprioritize, mark tasks as done, and manage your workflow
 - **Custom Matrix Notes**: Create new priority matrix notes with a single command
 - **Auto-Switch View**: Automatically opens files with "priority matrix" in the name in matrix view
@@ -14,6 +14,7 @@ An Obsidian plugin that creates and manages Eisenhower priority matrix notes wit
 
 ## Installation
 
+(Not yet released there)
 ### From Obsidian Community Plugins
 
 1. Open **Settings** → **Community plugins**
@@ -31,18 +32,17 @@ An Obsidian plugin that creates and manages Eisenhower priority matrix notes wit
 ## Usage
 
 ### Creating a Priority Matrix Note
+1. Right-click on a folder in the file explorer and select **New priority matrix note**
 
+Alternatively, you can:
 1. Open the command palette (`Ctrl+P` / `Cmd+P`)
 2. Run **Create priority matrix note**
 3. A new note with the matrix template will be created in the current folder
 
-Alternatively, you can:
-- Right-click on a folder in the file explorer and select **New priority matrix note**
-- Use the command **Open as matrix** to convert an existing markdown file into a matrix view
-
 ### Working with the Matrix
 
-- **View Tasks**: Tasks from your vault tagged with `#TODO` will automatically appear in the matrix
+- **Customise Settings**: Customize the folder to scan, change your tag to scan, add exempted notes
+- **View Tasks**: Tasks from your vault tagged with `#TODO` will automatically appear in the matrix on refresh. Or simply press the refresh icon
 - **Move Tasks**: Drag tasks between quadrants to reprioritize them
 - **Mark as Done**: Move tasks to the Done bank to mark them as complete
 - **Edit Tasks**: Click on tasks to edit them directly in their source files
@@ -86,11 +86,11 @@ Access plugin settings via **Settings** → **Priority Matrix**.
 - Check that the **Include folder** setting includes the path where your TODO notes are located
 - Verify that **Recursive scan** is enabled if your TODOs are in subfolders
 - Check the **Max files to scan** setting isn't limiting the scan
+- Make sure property [do-not-delete:priority-matrix-plugin] has not been removed
 
 ### Matrix View Not Opening
 
 - Files with "priority matrix" in the name will automatically open in matrix view
-- For other files, use the **Open as matrix** command from the command palette
 - Ensure the file contains a priority matrix code block or frontmatter
 
 ### Plugin Not Loading
