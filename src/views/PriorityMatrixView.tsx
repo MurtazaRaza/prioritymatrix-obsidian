@@ -216,9 +216,12 @@ export class PriorityMatrixView extends TextFileView {
     }
 
     private isPriorityMatrixFile(data: string): boolean {
-        // Check for frontmatter marker or section headings
-        return (data.includes('do-not-delete:') && data.includes('priority-matrix-plugin')) ||
-               data.match(/^##\s+(TODO|Q1|Q2|Q3|Q4|DONE)/m) !== null;
+        // Check for frontmatter marker (strict check inside frontmatter block)
+        const hasFrontmatterMarker = /^---\n[\s\S]*?do-not-delete:\s*["']?priority-matrix-plugin["']?[\s\S]*?\n---/m.test(data);
+        
+        const hasStructuralMarkers = /^##\s+(Q[1-4]|settingsJson)/m.test(data);
+
+        return hasFrontmatterMarker || hasStructuralMarkers;
     }
 
     private render(): void {

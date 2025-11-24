@@ -434,9 +434,11 @@ export default class PriorityMatrixPlugin extends Plugin {
         // Content check: read the file and check for priority matrix markers
         try {
             const content = await this.app.vault.read(file);
-            // Check for frontmatter marker or section headings
-            return (content.includes('do-not-delete:') && content.includes('priority-matrix-plugin')) ||
-                /^##\s+(TODO|Q1|Q2|Q3|Q4|DONE)/m.test(content);
+            const hasFrontmatterMarker = /^---\n[\s\S]*?do-not-delete:\s*["']?priority-matrix-plugin["']?[\s\S]*?\n---/m.test(content);
+            
+            const hasStructuralMarkers = /^##\s+(Q[1-4]|settingsJson)/m.test(content);
+
+            return hasFrontmatterMarker || hasStructuralMarkers;
         } catch (error) {
             // If we can't read the file, fall back to filename check
             return false;
