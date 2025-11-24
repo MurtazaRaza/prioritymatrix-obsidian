@@ -320,8 +320,7 @@ export default class PriorityMatrixPlugin extends Plugin {
         ];
 
         const placeholderTodos = [
-            '- [ ] Example: Add a README for the project',
-            '- [ ] Example: Plan next sprint goals'
+            '- [ ] Example: Add a TODO (Remove this)',
         ];
 
         // Use the folder where the matrix note is created as the default include root
