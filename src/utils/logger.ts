@@ -9,8 +9,16 @@ export class Logger {
 		return [this.prefix(), ...args];
 	}
 
+	private static isDebug = false;
+
+	static setDebug(debug: boolean) {
+		Logger.isDebug = debug;
+	}
+
 	log(message: unknown, ...optionalParams: unknown[]): void {
-		console.log(...this.withPrefix([message, ...optionalParams]));
+		if (Logger.isDebug) {
+			console.debug(...this.withPrefix([message, ...optionalParams]));
+		}
 	}
 
 	info(message: unknown, ...optionalParams: unknown[]): void {

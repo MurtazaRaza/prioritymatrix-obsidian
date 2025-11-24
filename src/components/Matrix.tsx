@@ -19,7 +19,7 @@ interface MatrixProps {
 export function Matrix({ matrix, stateManager, app }: MatrixProps) {
     const [todoCollapsed, setTodoCollapsed] = useState(false);
     const [doneCollapsed, setDoneCollapsed] = useState(false);
-    
+
     // Single source of truth for drag state that triggers renders
     const [dragState, setDragState] = useState<{
         draggedItemId: string | null;
@@ -74,7 +74,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             // The dragged item might be in the DOM but hidden/moved.
             return itemId !== draggedItemId && !item.classList.contains('dragging');
         });
-        
+
         if (items.length === 0) return 0;
 
         // Find the item that the pointer is "before"
@@ -82,19 +82,19 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         // An item is "after" the pointer if:
         // 1. Its center Y is significantly below the pointer Y (next row)
         // 2. OR Its center Y is roughly same as pointer Y (same row) AND its center X is right of pointer X
-        
+
         const ROW_TOLERANCE = 20; // px
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const rect = item.getBoundingClientRect();
             const itemCenterX = rect.left + rect.width / 2;
-            
+
             // Check if pointer is definitely above this item's row
             if (mouseY < rect.top - ROW_TOLERANCE) {
                 return i;
             }
-            
+
             // Check if pointer is in the same row
             if (mouseY >= rect.top - ROW_TOLERANCE && mouseY <= rect.bottom + ROW_TOLERANCE) {
                 // If on same row, check X position
@@ -102,10 +102,10 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                     return i;
                 }
             }
-            
+
             // If pointer is below this item, continue to next item
         }
-        
+
         // If we haven't returned yet, the pointer is after all items
         return items.length;
     }, []);
@@ -116,21 +116,21 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
     const handlePointerDragStart = useCallback((itemId: string, from: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done', pointer: PointerEvent) => {
         // Find the dragged element
         const dragElement = document.querySelector(`[data-item-id="${itemId}"]`)?.closest('.pmx-item') as HTMLElement;
-        
+
         // Calculate origin position from element's bounding rect for overlay positioning
         // Use pageX/Y for pointer position to account for scrolling
         const pointerPosition: Coordinates = { x: pointer.pageX, y: pointer.pageY };
-        
+
         // Origin position is the pointer position when drag starts (for calculating offset)
         const originPosition: Coordinates = { x: pointer.pageX, y: pointer.pageY };
-        
-        touchDragStateRef.current = { 
-            itemId, 
+
+        touchDragStateRef.current = {
+            itemId,
             from,
             hoverOverSection: null,
             insertIndex: null,
         };
-        
+
         setDragState({
             draggedItemId: itemId,
             dragElement,
@@ -147,10 +147,10 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
     const handlePointerDragMove = useCallback((pointer: PointerEvent) => {
         const { itemId, from } = touchDragStateRef.current;
         if (!itemId || !from) return;
-        
+
         // Update pointer position for drag overlay
         const pointerPosition = { x: pointer.pageX, y: pointer.pageY };
-        
+
         // Update state to trigger re-render of DragOverlay
         setDragState(prev => ({
             ...prev,
@@ -164,7 +164,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         // Find the drop zone (cell or bank wrapper)
         let dropZone = elementUnderPointer.closest('.pmx-cell') as HTMLElement;
         let isBankWrapper = false;
-        
+
         if (!dropZone) {
             // Check for bank wrapper
             const bankWrapper = elementUnderPointer.closest('.pmx-bank-wrapper') as HTMLElement;
@@ -173,7 +173,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                 isBankWrapper = true;
             }
         }
-        
+
         if (!dropZone) {
             // Clear all drop indicators and placeholders if not over a valid drop zone
             document.querySelectorAll('.pmx-drop-placeholder').forEach(el => el.remove());
@@ -184,7 +184,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
 
         // Determine which section this is
         let section: 'todo' | 'q1' | 'q2' | 'q3' | 'q4' | 'done' | null = null;
-        
+
         if (isBankWrapper) {
             // For bank wrapper, look for the bank inside
             const bank = dropZone.querySelector('.pmx-bank');
@@ -211,7 +211,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         // Update ref
         touchDragStateRef.current.hoverOverSection = section;
         touchDragStateRef.current.insertIndex = insertIndex;
-        
+
         // Update visual feedback
         // For bank wrapper, we need to look inside the bank for the list
         let listElement = dropZone.querySelector('.pmx-list');
@@ -222,10 +222,10 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                 listElement = bank.querySelector('.pmx-list');
             }
         }
-        
+
         // Clear all placeholders from ALL lists to prevent accumulation
         document.querySelectorAll('.pmx-drop-placeholder').forEach(el => el.remove());
-        
+
         if (listElement) {
             // Get all items excluding dragged one and existing placeholders
             const allItems = Array.from(listElement.querySelectorAll<HTMLElement>('.pmx-item-wrapper:not(.pmx-drop-placeholder)'));
@@ -235,7 +235,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                 const itemId = itemEl?.getAttribute('data-item-id');
                 return itemId !== draggedItemId && !item.classList.contains('dragging');
             });
-            
+
             // Find the dragged item's original index in the full list
             let draggedOriginalIndex = -1;
             if (draggedItemId) {
@@ -244,11 +244,11 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                     return itemEl?.getAttribute('data-item-id') === draggedItemId;
                 });
             }
-            
+
             // Calculate effective insert index
             const isMovingWithinSameSection = from === section && draggedOriginalIndex >= 0;
             let effectiveInsertIndex = insertIndex;
-            
+
             if (isMovingWithinSameSection && draggedOriginalIndex >= 0) {
                 // When moving within same section, we need to account for the item being removed from the list
                 if (insertIndex > draggedOriginalIndex) {
@@ -259,7 +259,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                     effectiveInsertIndex = insertIndex;
                 }
             }
-            
+
             // Create and insert placeholder
             const placeholder = document.createElement('div');
             placeholder.className = 'pmx-drop-placeholder';
@@ -289,7 +289,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
 
     const handlePointerDragEnd = useCallback(() => {
         const { itemId, from, hoverOverSection: to, insertIndex } = touchDragStateRef.current;
-        
+
         // Always restore body scroll
         document.body.style.overflow = '';
 
@@ -301,10 +301,10 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                 originPosition: null,
                 pointerPosition: null,
             });
-            touchDragStateRef.current = { 
-                itemId: null, 
-                from: null, 
-                hoverOverSection: null, 
+            touchDragStateRef.current = {
+                itemId: null,
+                from: null,
+                hoverOverSection: null,
                 insertIndex: null,
             };
             return;
@@ -314,7 +314,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         document.querySelectorAll('.pmx-item.dragging').forEach(el => {
             el.classList.remove('dragging');
         });
-        
+
         // Clear all placeholders
         document.querySelectorAll('.pmx-drop-placeholder').forEach(el => el.remove());
 
@@ -330,7 +330,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             // Reorder within same section
             // Need to adjust index if moving forwards in list
             let finalIndex = insertIndex;
-            
+
             // Find the original index to compare
             let originalIndex = -1;
             const currentState = stateManager.getState();
@@ -342,7 +342,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                     const quadrant = currentState.children.find(q => q.id === from);
                     if (quadrant) items = quadrant.children;
                 }
-                
+
                 originalIndex = items.findIndex(i => i.id === itemId);
             }
 
@@ -364,10 +364,10 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             originPosition: null,
             pointerPosition: null,
         });
-        touchDragStateRef.current = { 
-            itemId: null, 
-            from: null, 
-            hoverOverSection: null, 
+        touchDragStateRef.current = {
+            itemId: null,
+            from: null,
+            hoverOverSection: null,
             insertIndex: null,
         };
     }, [stateManager]);
@@ -383,10 +383,8 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
 
     return (
         <div className="priority-matrix-container">
-            {/* <div className="priority-matrix-toolbar">
-                <div className="priority-matrix-title">Eisenhower Matrix</div>
-            </div> */}
-            <DragOverlay 
+
+            <DragOverlay
                 isDragging={isDragging}
                 dragItem={dragElement}
                 pointerPosition={pointerPosition}
@@ -406,7 +404,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                         app={app}
                     />
                 </div>
-                
+
                 <div className="pmx-matrix-header">
                     <div className="pmx-col-subheader">Urgent</div>
                     <div className="pmx-col-subheader">Not urgent</div>
