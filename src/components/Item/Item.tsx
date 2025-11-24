@@ -412,6 +412,17 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
         menu.showAtPosition(coords);
     }, []);
 
+    const displayTitle = useMemo(() => {
+        const title = item.data.title || '';
+        if (title.length <= 26) return title;
+        return title.substring(0, 26) + '...';
+    }, [item.data.title]);
+
+    const tooltipText = useMemo(() => {
+        const path = item.data.metadata.fileAccessor?.path;
+        return path ? `${item.data.title}\n${path}` : item.data.title;
+    }, [item.data.title, item.data.metadata.fileAccessor]);
+
     return (
         <div className="pmx-item-wrapper">
             <div
@@ -427,6 +438,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                             <a
                                 href="#"
                                 className="pmx-item-title"
+                                title={tooltipText}
                                 onClick={(e) => {
                                     // Only trigger click if we weren't dragging
                                     if (!wasDraggingRef.current) {
@@ -441,10 +453,10 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                                     }
                                 }}
                             >
-                                {item.data.title}
+                                {displayTitle}
                             </a>
                         ) : (
-                            <div className="pmx-item-title">{item.data.title}</div>
+                            <div className="pmx-item-title" title={tooltipText}>{displayTitle}</div>
                         )}
                         <button
                             className="pmx-item-menu-btn"
