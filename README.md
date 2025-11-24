@@ -2,7 +2,7 @@
 
 An Obsidian plugin that creates and manages Eisenhower priority matrix notes with automatic TODO sourcing from your vault.
 
-![Priority Matrix View](Images/PriorityMatrix.png)
+![Priority Matrix View](Images/PriorityMatrix.png | width=200)
 
 ## Features
 
