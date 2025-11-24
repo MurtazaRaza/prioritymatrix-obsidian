@@ -2,7 +2,7 @@
 
 An Obsidian plugin that creates and manages Eisenhower priority matrix notes with automatic TODO sourcing from your vault.
 
-![Priority Matrix View](Images/PriorityMatrix.png | width=200)
+<img src="Images/PriorityMatrix.png" width="600" />
 
 ## Features
 
@@ -50,7 +50,7 @@ Alternatively, you can:
 - **Edit Tasks**: Click on tasks to edit them directly in their source files
 - **Switch Views**: Toggle between matrix view and markdown view using the view switcher
 
-![Markdown View](Images/Md.png)
+<img src="Images/Md.png" width="600" />
 
 ### Matrix Quadrants
 
@@ -65,7 +65,7 @@ The Eisenhower Matrix organizes tasks into four quadrants:
 
 Access plugin settings via **Settings** → **Priority Matrix**.
 
-![Settings](Images/Settings.png)
+<img src="Images/Settings.png" width="200" />
 
 ### Scan Settings
 
