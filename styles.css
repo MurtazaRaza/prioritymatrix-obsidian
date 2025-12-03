@@ -425,8 +425,12 @@ If your plugin does not need CSS, delete this file.
 /* .pmx-shift-down removed as we now use placeholder element for layout reflow */
 
 /* Drag overlay that follows pointer */
-.priority-matrix-view .pmx-drag-overlay {
+.pmx-drag-overlay {
+  position: fixed !important;
   pointer-events: none !important;
+  z-index: 9999 !important;
+  opacity: 0.8;
+  transform-origin: top left;
 }
 
 @keyframes pulse {
