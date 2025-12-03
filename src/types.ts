@@ -14,7 +14,7 @@ export interface ItemMetadata {
     date?: Date;
     tags?: string[];
     fileAccessor?: TFile;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface ItemData {
@@ -54,7 +54,7 @@ export interface ErrorReport {
 
 export interface MatrixData {
     settings: MatrixSettings;
-    frontmatter: Record<string, any>;
+    frontmatter: Record<string, unknown>;
     banks: MatrixBanks;
     errors: ErrorReport[];
 }

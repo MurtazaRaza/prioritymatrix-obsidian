@@ -19,7 +19,7 @@ export function distanceBetween(p1: Coordinates, p2: Coordinates): number {
  * RAF-throttled function wrapper
  * Ensures the callback is called at most once per animation frame
  */
-export function rafThrottle<T extends (...args: any[]) => void>(
+export function rafThrottle<T extends (...args: unknown[]) => void>(
     win: Window,
     callback: T
 ): T {

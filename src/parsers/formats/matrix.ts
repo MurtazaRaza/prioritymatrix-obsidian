@@ -1,6 +1,7 @@
 import { visit } from 'unist-util-visit';
-import type { Root, Heading, List, ListItem, Paragraph, Text, Link } from 'mdast';
-import { Matrix, Quadrant, Item, MatrixBanks, ErrorReport } from '../../types';
+import type { Node } from 'unist';
+import type { Heading, List, ListItem } from 'mdast';
+import { MatrixSettings, ErrorReport } from '../../types';
 import { DEFAULT_SETTINGS, parseSettingsFromJson } from '../../settings';
 import { ParsedMarkdown } from '../parseMarkdown';
 import { createLogger } from '../../utils/logger';
@@ -25,69 +26,58 @@ export interface UnhydratedMatrix {
         todo: UnhydratedItem[];
         done: UnhydratedItem[];
     };
-    settings: any;
-    frontmatter: Record<string, any>;
+    settings: MatrixSettings;
+    frontmatter: Record<string, unknown>;
     errors: ErrorReport[];
+}
+
+type NodeLike = {
+    type?: string;
+    value?: unknown;
+    url?: unknown;
+    children?: NodeLike[];
+};
+
+function isTextNode(node: NodeLike): node is NodeLike & { type: 'text'; value: string } {
+    return node.type === 'text' && typeof node.value === 'string';
+}
+
+function isLinkNode(node: NodeLike): node is NodeLike & { type: 'link'; url: string } {
+    return node.type === 'link' && typeof node.url === 'string';
+}
+
+function hasChildren(node: NodeLike): node is NodeLike & { children: NodeLike[] } {
+    return Array.isArray(node.children);
 }
 
 /**
  * Extract text content from a node (handles text, links, etc.)
  */
-function extractText(node: any): string {
-    if (node.type === 'text') {
+function extractText(node: NodeLike): string {
+    if (isTextNode(node)) {
         return node.value;
     }
-    if (node.type === 'link') {
+    if (isLinkNode(node) && node.children) {
         return extractTextFromChildren(node.children);
     }
-    if (node.children) {
+    if (hasChildren(node)) {
         return extractTextFromChildren(node.children);
     }
     return '';
 }
 
-function extractTextFromChildren(children: any[]): string {
+function extractTextFromChildren(children: NodeLike[]): string {
     return children.map(child => extractText(child)).join('');
 }
 
-/**
- * Extract wikilink from text or link node
- */
-function extractWikilink(node: any): { path: string; alias?: string } | null {
-    // Check if it's a wikilink in text: [[path]] or [[path|alias]]
-    if (node.type === 'text') {
-        const match = node.value.match(/\[\[([^\]]+)\]\]/);
-        if (match) {
-            const content = match[1];
-            const [path, alias] = content.split('|');
-            return { path: path.trim(), alias: alias?.trim() };
-        }
-    }
-    // Check if it's a link node
-    if (node.type === 'link' && node.url) {
-        // Wikilinks might be represented as links
-        if (node.url.startsWith('[[') && node.url.endsWith(']]')) {
-            const content = node.url.slice(2, -2);
-            const [path, alias] = content.split('|');
-            return { path: path.trim(), alias: alias?.trim() };
-        }
-    }
-    // Check children for wikilinks
-    if (node.children) {
-        for (const child of node.children) {
-            const link = extractWikilink(child);
-            if (link) return link;
-        }
-    }
-    return null;
-}
+type TaskListItem = ListItem & { checked?: boolean | null };
 
 /**
  * Convert a list item to an unhydrated item
  */
 function listItemToUnhydratedItem(listItem: ListItem, section: Section): UnhydratedItem | null {
     // Check if it's a task list item
-    const checked = (listItem as any).checked === true;
+    const checked = (listItem as TaskListItem).checked === true;
     
     // Extract all text content from the list item (including from paragraph children)
     let titleRaw = '';
@@ -184,7 +174,7 @@ export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix 
 
     // First pass: collect all headings and their positions
     const headings: Array<{ text: string; section: Section; rawText: string }> = [];
-    visit(ast, (node) => {
+    visit(ast, (node: Node) => {
         // Log all node types we encounter
         if (node.type === 'heading') {
             const heading = node as Heading;
@@ -220,7 +210,7 @@ export function astToUnhydratedMatrix(parsed: ParsedMarkdown): UnhydratedMatrix 
     log.log('Total headings found', headings.length);
 
     // Second pass: process nodes and track current section
-    visit(ast, (node, index, parent) => {
+    visit(ast, (node: Node) => {
         // Detect section headings
         if (node.type === 'heading') {
             const heading = node as Heading;

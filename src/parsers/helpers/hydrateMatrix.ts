@@ -76,7 +76,7 @@ function hydrateItem(
     const wikilinkMatch = unhydrated.titleRaw.match(/\[\[([^\]]+)\]\]/);
     if (wikilinkMatch) {
         const linkContent = wikilinkMatch[1];
-        const [path, alias] = linkContent.split('|');
+        const [path] = linkContent.split('|');
         const resolved = app.metadataCache.getFirstLinkpathDest(path.trim(), filePath);
         if (resolved) {
             fileAccessor = resolved;

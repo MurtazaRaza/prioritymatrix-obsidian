@@ -42,7 +42,7 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onPo
         if (collapsed) {
             onToggleCollapse();
             // Wait a bit for the expansion animation, then show input
-            setTimeout(() => {
+            globalThis.setTimeout(() => {
                 setIsAdding(true);
             }, 100);
         } else {
@@ -55,13 +55,13 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onPo
             e.preventDefault();
             const text = newItemText.trim();
             stateManager.addItem(text, 'todo');
-            stateManager.save();
+            await stateManager.save();
             // Track that we just added this item to prevent duplicate on blur
             itemJustAddedRef.current = text;
             setNewItemText('');
             setIsAdding(false);
             // Clear the flag after a short delay
-            setTimeout(() => {
+            globalThis.setTimeout(() => {
                 itemJustAddedRef.current = null;
             }, 500);
         } else if (e.key === 'Escape') {
@@ -73,7 +73,7 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onPo
 
     const handleInputBlur = () => {
         // Only hide if we're not clicking the add button
-        setTimeout(() => {
+        globalThis.setTimeout(() => {
             const text = newItemText.trim();
             // Don't add if we just added this item (e.g., via Enter key)
             // or if the item already exists in the list
@@ -84,9 +84,9 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onPo
                 );
                 if (!itemExists) {
                     stateManager.addItem(text, 'todo');
-                    stateManager.save();
+                    void stateManager.save();
                     itemJustAddedRef.current = text;
-                    setTimeout(() => {
+                    globalThis.setTimeout(() => {
                         itemJustAddedRef.current = null;
                     }, 500);
                 }
@@ -138,7 +138,7 @@ export function TodoBank({ items, collapsed, onToggleCollapse, onItemClick, onPo
                                 className="pmx-add-item-input"
                                 value={newItemText}
                                 onInput={(e) => setNewItemText((e.target as HTMLInputElement).value)}
-                                onKeyDown={handleInputKeyDown}
+                                onKeyDown={(e) => { void handleInputKeyDown(e as KeyboardEvent); }}
                                 onBlur={handleInputBlur}
                                 placeholder="Enter item text..."
                                 style={{

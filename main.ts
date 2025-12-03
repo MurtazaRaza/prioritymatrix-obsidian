@@ -1,4 +1,4 @@
-import { App, MarkdownView, Menu, Notice, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile, TFolder, WorkspaceLeaf } from 'obsidian';
+import { App, MarkdownView, Menu, Notice, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile, TFolder, WorkspaceLeaf, EventRef } from 'obsidian';
 import { PriorityMatrixView, VIEW_TYPE_PRIORITY_MATRIX } from './src/views/PriorityMatrixView';
 import { createLogger } from './src/utils/logger';
 
@@ -40,25 +40,25 @@ export default class PriorityMatrixPlugin extends Plugin {
         );
 
         this.addCommand({
-            id: 'create-priority-matrix-note',
-            name: 'Create priority matrix note',
+            id: 'create-matrix-note',
+            name: 'Create matrix note',
             callback: async () => {
                 await this.createPriorityMatrixInActiveFolder();
             }
         });
 
         this.addCommand({
-            id: 'open-as-priority-matrix',
-            name: 'Open as matrix',
+            id: 'open-as-matrix-view',
+            name: 'Open as matrix view',
             checkCallback: (checking) => {
                 const file = this.app.workspace.getActiveFile();
                 // Quick synchronous check (filename only for availability)
                 const can = !!file && file.extension === 'md';
                 if (!checking && can && file) {
                     // Do full async check and open if valid
-                    this.noteHasPriorityMatrixBlock(file).then(isMatrix => {
+                    void this.noteHasPriorityMatrixBlock(file).then(isMatrix => {
                         if (isMatrix) {
-                            this.openAsMatrixView(file);
+                            void this.openAsMatrixView(file);
                         }
                     });
                 }
@@ -76,9 +76,9 @@ export default class PriorityMatrixPlugin extends Plugin {
                 const can = !!file && file.extension === 'md';
                 if (!checking && can && file) {
                     // Do full async check and open if valid
-                    this.noteHasPriorityMatrixBlock(file).then(isMatrix => {
+                    void this.noteHasPriorityMatrixBlock(file).then(isMatrix => {
                         if (isMatrix) {
-                            this.openAsMatrixView(file);
+                            void this.openAsMatrixView(file);
                         }
                     });
                 }
@@ -88,12 +88,12 @@ export default class PriorityMatrixPlugin extends Plugin {
 
         this.addCommand({
             id: 'open-as-markdown',
-            name: 'Open as markdown',
+            name: "Open as Markdown",
             checkCallback: (checking) => {
                 const view = this.app.workspace.getActiveViewOfType(PriorityMatrixView);
                 const can = !!view && !!view.file;
                 if (!checking && can && view.file) {
-                    this.openAsMarkdownView(view.file);
+                    void this.openAsMarkdownView(view.file);
                 }
                 return can;
             }
@@ -102,7 +102,7 @@ export default class PriorityMatrixPlugin extends Plugin {
         this.registerEvent(this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
             if (file instanceof TFolder) {
                 menu.addItem((item) => {
-                    item.setTitle('New priority matrix note')
+                    item.setTitle('New matrix note')
                         .setIcon('layout-grid')
                         .onClick(async () => {
                             await this.createPriorityMatrixInFolder(file);
@@ -113,8 +113,12 @@ export default class PriorityMatrixPlugin extends Plugin {
 
 
         // Listen for a suppression request coming from views before switching to markdown
+        type PriorityMatrixWorkspace = {
+            on: (name: 'priority-matrix:suppress-next-autoswitch', callback: (path: string) => void) => EventRef;
+        };
+        const pmWorkspace = this.app.workspace as unknown as PriorityMatrixWorkspace;
         this.registerEvent(
-            (this.app.workspace as any).on('priority-matrix:suppress-next-autoswitch', (path: string) => {
+            pmWorkspace.on('priority-matrix:suppress-next-autoswitch', (path: string) => {
                 if (typeof path === 'string' && path.length > 0) {
                     this.suppressAutoSwitch.add(path);
                     // Also clear any pending auto-switch for this path
@@ -225,27 +229,28 @@ export default class PriorityMatrixPlugin extends Plugin {
                 if (!file || file.extension !== 'md') return;
 
                 // Wait a bit for the view to be ready
-                setTimeout(async () => {
-                    const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-                    if (activeView && activeView.file?.path === file.path && !this.markdownViewsWithActions.has(activeView)) {
-                        const isMatrixFile = await this.noteHasPriorityMatrixBlock(file);
-                        if (isMatrixFile) {
-                            this.addMarkdownViewActions(activeView, file);
-                            this.markdownViewsWithActions.add(activeView);
+                globalThis.setTimeout(() => {
+                    void (async () => {
+                        const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+                        if (activeView && activeView.file?.path === file.path && !this.markdownViewsWithActions.has(activeView)) {
+                            const isMatrixFile = await this.noteHasPriorityMatrixBlock(file);
+                            if (isMatrixFile) {
+                                this.addMarkdownViewActions(activeView, file);
+                                this.markdownViewsWithActions.add(activeView);
+                            }
                         }
-                    }
+                    })();
                 }, 100);
             })
         );
     }
 
     onunload() {
-        // Clean up view
-        this.app.workspace.detachLeavesOfType(VIEW_TYPE_PRIORITY_MATRIX);
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const loaded = await this.loadData() as PriorityMatrixPluginSettings | null;
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
         if (this.settings.autoRemoveTodoOnDone) {
             this.settings.enableStrikethroughOnDone = false;
         }
@@ -309,15 +314,7 @@ export default class PriorityMatrixPlugin extends Plugin {
     }
 
     private async generateMatrixNoteContent(folder: TFolder): Promise<string> {
-        const headings = [
-            'TODO',
-            'Q1',
-            'Q2',
-            'Q3',
-            'Q4',
-            'DONE',
-            'settingsJson'
-        ];
+        const headings = ['TODO', 'Q1', 'Q2', 'Q3', 'Q4', 'DONE', 'settingsJson'];
 
         const placeholderTodos = [
             '- [ ] Example: Add a TODO (Remove this)',
@@ -387,7 +384,7 @@ export default class PriorityMatrixPlugin extends Plugin {
         const visited: TFile[] = [];
         const max = this.settings.maxFiles === 0 ? Number.MAX_SAFE_INTEGER : this.settings.maxFiles;
         const todoTag = this.settings.todoTag;
-        const tagRegex = new RegExp(`#${escapeRegExp(todoTag)}(?![\w-])`, 'i');
+        const tagRegex = new RegExp(`#${escapeRegExp(todoTag)}(?![A-Za-z0-9-])`, 'i');
 
         const walk = async (folder: TFolder) => {
             for (const child of folder.children) {
@@ -439,7 +436,7 @@ export default class PriorityMatrixPlugin extends Plugin {
             const hasStructuralMarkers = /^##\s+(Q[1-4]|settingsJson)/m.test(content);
 
             return hasFrontmatterMarker || hasStructuralMarkers;
-        } catch (error) {
+        } catch {
             // If we can't read the file, fall back to filename check
             return false;
         }
@@ -448,7 +445,7 @@ export default class PriorityMatrixPlugin extends Plugin {
     // Add header actions to markdown view for priority matrix files
     private addMarkdownViewActions(view: MarkdownView, file: TFile): void {
         // Add refresh button - reloads the file to refresh the view
-        view.addAction('refresh-cw', 'Refresh', async () => {
+        view.addAction('refresh-cw', 'Refresh note', async () => {
             try {
                 // Read current content and modify file to trigger change event
                 // This will cause Obsidian to refresh the markdown view
@@ -461,7 +458,7 @@ export default class PriorityMatrixPlugin extends Plugin {
         });
 
         // Add switch to matrix view button
-        view.addAction('layout-grid', 'Switch to Matrix View', async () => {
+        view.addAction('layout-grid', 'Switch to matrix view', async () => {
             await this.openAsMatrixView(file);
         });
     }
@@ -479,10 +476,14 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h3', { text: 'Scan' });
+        // eslint-disable-next-line obsidianmd/settings-tab/no-problematic-settings-headings
+        new Setting(containerEl)
+            .setName('Scan options')
+            .setHeading();
+
         new Setting(containerEl)
             .setName('Include folder')
-            .setDesc('Vault-relative path to scan for #TODO notes (default: /)')
+            .setDesc('Vault-relative path to scan for #todo notes (default: /)')
             .addText(text => text
                 .setPlaceholder('/')
                 .setValue(this.plugin.settings.includePath)
@@ -502,8 +503,8 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('TODO tag')
-            .setDesc('Tag to match (without #), case-insensitive')
+            .setName('Todo tag')
+            .setDesc('Tag to match (without #), case insensitive')
             .addText(text => text
                 .setPlaceholder('TODO')
                 .setValue(this.plugin.settings.todoTag)
@@ -514,7 +515,7 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Max files to scan')
-            .setDesc('Set 0 for unlimited')
+            .setDesc('Set 0 for no limit')
             .addText(text => text
                 .setPlaceholder('99999')
                 .setValue(String(this.plugin.settings.maxFiles))
@@ -524,10 +525,14 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl('h3', { text: 'Behavior' });
+        // eslint-disable-next-line obsidianmd/settings-tab/no-problematic-settings-headings
         new Setting(containerEl)
-            .setName('Auto-remove TODO on Done')
-            .setDesc('Remove the TODO tag instead of strikethrough when moved to Done')
+            .setName('Behavior options')
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName('Automatically remove todo on done')
+            .setDesc('Remove the todo tag instead of using strikethrough when moved to done')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.autoRemoveTodoOnDone)
                 .onChange(async (value) => {
@@ -538,8 +543,8 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Strikethrough TODO on Done')
-            .setDesc('Replace #TODO with ~~#TODO~~ when moved to Done')
+            .setName('Use strikethrough for todo on done')
+            .setDesc('Replace #todo with ~~#todo~~ when moved to done')
             .addToggle(toggle => toggle
                 .setDisabled(this.plugin.settings.autoRemoveTodoOnDone)
                 .setValue(this.plugin.settings.enableStrikethroughOnDone)

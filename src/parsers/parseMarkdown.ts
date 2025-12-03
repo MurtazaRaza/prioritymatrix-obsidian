@@ -5,7 +5,7 @@ import type { Root } from 'mdast';
 import { createLogger } from '../utils/logger';
 
 export interface ParsedMarkdown {
-    frontmatter: Record<string, any>;
+    frontmatter: Record<string, unknown>;
     settings: string | null;
     content: string;
     ast: Root;
@@ -19,7 +19,7 @@ const log = createLogger('parseMarkdown');
 export function parseMarkdown(md: string): ParsedMarkdown {
     // Extract frontmatter
     const frontmatterMatch = md.match(/^---\n([\s\S]*?)\n---\n/);
-    let frontmatter: Record<string, any> = {};
+    const frontmatter: Record<string, unknown> = {};
     let contentWithoutFrontmatter = md;
     
     if (frontmatterMatch) {
@@ -33,13 +33,14 @@ export function parseMarkdown(md: string): ParsedMarkdown {
                     const value = match[2].trim();
                     // Try to parse as JSON, otherwise use as string
                     try {
-                        frontmatter[key] = JSON.parse(value);
+                        const parsedValue: unknown = JSON.parse(value);
+                        frontmatter[key] = parsedValue;
                     } catch {
                         frontmatter[key] = value;
                     }
                 }
             });
-        } catch (e) {
+        } catch {
             // Ignore frontmatter parsing errors
         }
         contentWithoutFrontmatter = md.slice(frontmatterMatch[0].length);

@@ -1,6 +1,5 @@
-import { h } from 'preact';
-import { useEffect, useState, useRef } from 'preact/hooks';
-import { createPortal } from 'preact/compat';
+/* global window, document */
+import { useEffect, useRef } from 'preact/hooks';
 import { Coordinates } from '../utils/drag';
 
 interface DragOverlayProps {
@@ -11,7 +10,6 @@ interface DragOverlayProps {
 }
 
 export function DragOverlay({ isDragging, dragItem, pointerPosition, originPosition }: DragOverlayProps) {
-    const [overlayElement, setOverlayElement] = useState<HTMLElement | null>(null);
     const cloneRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
@@ -44,24 +42,15 @@ export function DragOverlay({ isDragging, dragItem, pointerPosition, originPosit
         if (!cloneRef.current) {
             const clone = dragItem.cloneNode(true) as HTMLElement;
             clone.classList.add('pmx-drag-overlay');
-            
-            // Set initial position and styles
-            clone.style.position = 'fixed';
-            clone.style.pointerEvents = 'none';
-            clone.style.zIndex = '10000';
-            clone.style.opacity = '0.8';
+
+            // Set initial position and dynamic styles
             clone.style.width = `${originRect.width}px`;
             clone.style.height = `${originRect.height}px`;
             clone.style.left = `${rect.left}px`;
             clone.style.top = `${rect.top}px`;
-            clone.style.margin = '0';
-            clone.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)';
             clone.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-            clone.style.transition = 'none';
-            
             document.body.appendChild(clone);
             cloneRef.current = clone;
-            setOverlayElement(clone);
         } else {
             // Update position to follow pointer
             cloneRef.current.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;

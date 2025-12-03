@@ -11,15 +11,15 @@ export const DEFAULT_SETTINGS: MatrixSettings = {
 };
 
 export function parseSettingsFromJson(jsonStr: string): MatrixSettings {
-  try {
-        const parsed = JSON.parse(jsonStr);
-        const settings = Object.assign({}, DEFAULT_SETTINGS, parsed);
+    try {
+        const parsed = JSON.parse(jsonStr) as Partial<MatrixSettings>;
+        const settings: MatrixSettings = Object.assign({}, DEFAULT_SETTINGS, parsed);
         // Normalize empty string includePath to "/" for consistency
         if (settings.includePath === '') {
             settings.includePath = '/';
         }
         return settings;
-    } catch (e) {
+    } catch {
         return DEFAULT_SETTINGS;
     }
 }

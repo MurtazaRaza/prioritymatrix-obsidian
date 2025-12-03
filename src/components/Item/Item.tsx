@@ -1,3 +1,4 @@
+/* global window, document */
 import { h } from 'preact';
 import { useRef, useEffect, useCallback, useMemo } from 'preact/hooks';
 import { App, Menu, Modal, Setting, Notice } from 'obsidian';
@@ -22,15 +23,15 @@ class TodoLinkedRemoveModal extends Modal {
 		super(app);
 		this.setTitle('Linked note options');
 		new Setting(this.contentEl)
-			.setName('Remove #TODO from note')
-			.setDesc('This will edit the linked note to remove the TODO tag.')
-			.addButton(b => b.setButtonText('Remove #TODO').onClick(() => {
+			.setName('Remove todo tag from note')
+			.setDesc('This will edit the linked note to remove the todo tag.')
+			.addButton(b => b.setButtonText('Remove todo tag').onClick(() => {
 				onRemoveTag();
 				this.close();
 			}));
 		new Setting(this.contentEl)
 			.setName('Add to exemption list')
-			.setDesc('Keep the note in the vault but exclude it from TODO scans.')
+			.setDesc('Keep the note in the vault but exclude it from todo scans.')
 			.addButton(b => b.setButtonText('Exempt').onClick(() => {
 				onExempt();
 				this.close();
@@ -182,7 +183,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
             win.removeEventListener('pointerup', handlePointerUp);
             win.removeEventListener('pointercancel', handlePointerCancel);
             win.removeEventListener('contextmenu', cancelContextMenu, true); // Capture phase must match
-            win.removeEventListener('touchmove', cancelTouchMove, { passive: false } as any);
+            win.removeEventListener('touchmove', cancelTouchMove, { passive: false } as EventListenerOptions);
         }
 
         // Remove dragging class
@@ -191,9 +192,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
         }
 
         // Restore body scroll
-        if (document.body) {
-            document.body.style.overflow = '';
-        }
+        document.body.classList.remove('pmx-no-scroll');
 
         const wasDragging = isDraggingRef.current;
         isDraggingRef.current = false;
@@ -282,9 +281,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                 }
                 
                 // Prevent body scroll during drag
-                if (document.body) {
-                    document.body.style.overflow = 'hidden';
-                }
+                document.body.classList.add('pmx-no-scroll');
                 
                 // Add touchmove prevention
                 win.addEventListener('touchmove', cancelTouchMove, { passive: false });
@@ -337,12 +334,13 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                         const section = (from || 'q1');
                         if (!isLinked) {
                             stateManager.removeItem(item.id, section);
-                            stateManager.save();
+                            void stateManager.save();
                             new Notice('Item removed');
                             return;
                         }
                         const modal = new TodoLinkedRemoveModal(app,
-                            async () => {
+                            () => {
+                                void (async () => {
                                 // Remove #TODO from linked note
                                 const file = item.data.metadata.fileAccessor;
                                 if (!file) {
@@ -364,7 +362,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
 
                                     // Create regex to match the tag (case-insensitive, with negative lookahead)
                                     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                    const tagPattern = `#${escapeRegExp(todoTag)}(?![\w-])`;
+                                    const tagPattern = `#${escapeRegExp(todoTag)}(?![\\w-])`;
                                     const tagRegex = new RegExp(tagPattern, 'gi');
 
                                     // Remove all instances of the tag
@@ -378,13 +376,14 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
 
                                     // Remove the bubble from the matrix
                                     stateManager.removeItem(item.id, section);
-                                    stateManager.save();
+                                    void stateManager.save();
 
                                     new Notice(`Removed #${todoTag} from note and removed from matrix`);
                                 } catch (error) {
                                     log.error('Error removing TODO tag:', error);
                                     new Notice('Error removing TODO tag: ' + (error instanceof Error ? error.message : String(error)));
                                 }
+                                })();
                             },
                             () => {
                                 // Add to exemption list and remove item
@@ -401,7 +400,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                                 settings.exemptPaths = Array.from(list);
                                 stateManager.setState(current);
                                 stateManager.removeItem(item.id, section);
-                                stateManager.save();
+                                void stateManager.save();
                                 new Notice('Added to exemption list and removed from matrix');
                             }
                         );
@@ -460,7 +459,7 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                         )}
                         <button
                             className="pmx-item-menu-btn"
-                            data-ignore-drag={true as any}
+                            data-ignore-drag="true"
                             onClick={handleMenuClick}
                             aria-label="Item options"
                         >

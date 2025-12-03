@@ -29,17 +29,18 @@ export class SettingsManager {
      * Get setting value with precedence (local over global)
      * Returns [localValue, globalValue]
      */
-    getSetting(key: keyof MatrixSettings, local: boolean): [any, any] {
+    getSetting<K extends keyof MatrixSettings>(
+        key: K,
+        local: boolean
+    ): [MatrixSettings[K] | undefined, MatrixSettings[K] | undefined] {
         if (local) {
             // For matrix-specific settings, return [local, global]
-            const pluginKey = key as keyof typeof this.plugin.settings;
-            const globalValue = pluginKey in this.plugin.settings 
-                ? this.plugin.settings[pluginKey] 
-                : undefined;
+            const pluginKey = key as keyof PriorityMatrixPlugin['settings'];
+            const globalValue = (this.plugin.settings?.[pluginKey] as MatrixSettings[K]) ?? undefined;
             return [this.settings[key], globalValue];
         }
-        // For global settings, return [global, null]
-        return [this.settings[key], null];
+        // For global settings, return [global, undefined]
+        return [this.settings[key], undefined];
     }
 
     /**
@@ -96,13 +97,13 @@ export class SettingsManager {
             });
         }
 
-        // Scan settings section
-        contentEl.createEl('h4', { text: 'Scan Settings' });
+        // Scan options section
+        contentEl.createEl('h4', { text: 'Scan options' });
 
-        // Include Path
+        // Include path
         new Setting(contentEl)
             .setName('Include folder')
-            .setDesc('Vault-relative path to scan for TODO notes (default: /)')
+            .setDesc('Vault-relative path to scan for todo notes (default: /)')
             .addText((text) => {
                 const [value, globalValue] = this.getSetting('includePath', local);
                 log.log('includePath display', {
@@ -187,14 +188,13 @@ export class SettingsManager {
                     });
             });
 
-        // TODO Tag
+        // Todo tag
         new Setting(contentEl)
-            .setName('TODO tag')
+            .setName('Todo tag')
             .setDesc('Tag to match (without #), case-insensitive')
             .addText((text) => {
-                const [value, globalValue] = this.getSetting('todoTag', local);
-                const effectiveValue = value || globalValue || 'TODO';
-                text.inputEl.placeholder = 'TODO';
+                const [value] = this.getSetting('todoTag', local);
+                text.inputEl.placeholder = 'Todo';
                 text.inputEl.value = value || '';
 
                 text.onChange((val) => {
@@ -231,7 +231,6 @@ export class SettingsManager {
             .setDesc('Set 0 for unlimited')
             .addText((text) => {
                 const [value, globalValue] = this.getSetting('maxFiles', local);
-                const effectiveValue = value !== undefined ? value : (globalValue ?? 99999);
                 text.inputEl.setAttr('type', 'number');
                 text.inputEl.placeholder = `${globalValue ?? 99999} (default)`;
                 text.inputEl.value = value !== undefined ? value.toString() : '';
@@ -253,8 +252,10 @@ export class SettingsManager {
                     }
 
                     this.applySettingsUpdate((current) => {
-                        const { maxFiles, ...rest } = current;
-                        return rest as MatrixSettings;
+                        const next: MatrixSettings = { ...current };
+                        // Remove maxFiles so it falls back to default/global
+                        delete (next as Partial<MatrixSettings>).maxFiles;
+                        return next;
                     });
                 });
             })
@@ -320,13 +321,13 @@ export class SettingsManager {
                     });
             });
 
-        // Behavior settings section
-        contentEl.createEl('h4', { text: 'Behavior Settings' });
+        // Behavior options section
+        contentEl.createEl('h4', { text: 'Behavior options' });
 
-        // Auto-remove TODO on Done
+        // Auto-remove todo on done
         new Setting(contentEl)
-            .setName('Auto-remove TODO on Done')
-            .setDesc('Remove the TODO tag instead of strikethrough when moved to Done')
+            .setName('Auto-remove todo on done')
+            .setDesc('Remove the todo tag instead of strikethrough when moved to done')
             .addToggle((toggle) => {
                 const [value, globalValue] = this.getSetting('autoRemoveTodoOnDone', local);
                 const effectiveValue = value !== undefined ? value : (globalValue ?? false);
@@ -334,7 +335,7 @@ export class SettingsManager {
 
                 toggle.onChange((newValue) => {
                     this.applySettingsUpdate((current) => {
-                        const updated = {
+                        const updated: MatrixSettings = {
                             ...current,
                             autoRemoveTodoOnDone: newValue,
                         };
@@ -345,7 +346,7 @@ export class SettingsManager {
                         return updated;
                     });
                     // Re-render to update strikethrough toggle state
-                    setTimeout(() => {
+                    globalThis.setTimeout(() => {
                         const strikethroughToggle = contentEl.querySelectorAll('.checkbox-container input[type="checkbox"]')[1] as HTMLInputElement;
                         if (strikethroughToggle) {
                             strikethroughToggle.disabled = newValue;
@@ -373,10 +374,10 @@ export class SettingsManager {
                     });
             });
 
-        // Enable strikethrough on Done
+        // Enable strikethrough on done
         new Setting(contentEl)
-            .setName('Strikethrough TODO on Done')
-            .setDesc('Replace #TODO with ~~#TODO~~ when moved to Done')
+            .setName('Strikethrough todo on done')
+            .setDesc('Replace #todo with ~~#todo~~ when moved to done')
             .addToggle((toggle) => {
                 const [value, globalValue] = this.getSetting('autoRemoveTodoOnDone', local);
                 const autoRemoveEnabled = value !== undefined ? value : (globalValue ?? false);

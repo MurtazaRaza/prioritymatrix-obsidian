@@ -1,7 +1,7 @@
+/* global document */
 import { h } from 'preact';
-import { useState, useCallback, useRef, useEffect } from 'preact/hooks';
+import { useState, useCallback, useRef } from 'preact/hooks';
 import { Matrix as MatrixType, Item } from '../types';
-import { Quadrants } from './Quadrant/Quadrants';
 import { TodoBank } from './Banks/TodoBank';
 import { DoneBank } from './Banks/DoneBank';
 import { Items } from './Item/Items';
@@ -50,7 +50,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
     const handleItemClick = useCallback((item: Item) => {
         if (item.data.metadata.fileAccessor) {
             // Open in a new tab (newLeaf = true) so the priority matrix stays open
-            app.workspace.openLinkText(
+            void app.workspace.openLinkText(
                 item.data.metadata.fileAccessor.path,
                 '',
                 true
@@ -140,7 +140,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
 
         // Prevent body scroll during drag (mainly for touch)
         if (['pen', 'touch'].includes(pointer.pointerType)) {
-            document.body.style.overflow = 'hidden';
+            document.body.classList.add('pmx-no-scroll');
         }
     }, []);
 
@@ -263,8 +263,6 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             // Create and insert placeholder
             const placeholder = document.createElement('div');
             placeholder.className = 'pmx-drop-placeholder';
-            placeholder.style.height = '40px';
-            placeholder.style.minHeight = '40px';
 
             if (effectiveInsertIndex < items.length && items[effectiveInsertIndex]) {
                 // Insert before this item
@@ -291,7 +289,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
         const { itemId, from, hoverOverSection: to, insertIndex } = touchDragStateRef.current;
 
         // Always restore body scroll
-        document.body.style.overflow = '';
+        document.body.classList.remove('pmx-no-scroll');
 
         if (!itemId || !from) {
             // Reset state
@@ -325,7 +323,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             } else {
                 stateManager.moveItem(itemId, from, to);
             }
-            stateManager.save();
+            void stateManager.save();
         } else if (to === from && insertIndex !== null && insertIndex >= 0) {
             // Reorder within same section
             // Need to adjust index if moving forwards in list
@@ -354,7 +352,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
             }
 
             stateManager.moveItem(itemId, from, to, finalIndex);
-            stateManager.save();
+            void stateManager.save();
         }
 
         // Reset state

@@ -93,7 +93,7 @@ export class StateManager {
             await this.app.vault.modify(this.file, md);
             log.log('save() file modified, waiting 100ms');
             // Brief delay to allow file change event to propagate
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => globalThis.setTimeout(resolve, 100));
             log.log('save() delay completed, setting isSaving=false');
         } finally {
             this.isSaving = false;
@@ -141,7 +141,7 @@ export class StateManager {
         }
 
         // Find the item
-        let item: any = null;
+        let item: Item | null = null;
         
         // Search in banks
         if (from === 'todo') {
@@ -213,7 +213,7 @@ export class StateManager {
         if (!this.state) return;
         if (insertIndex === undefined || insertIndex < 0) return;
 
-        let items: any[] = [];
+        let items: Item[] = [];
         
         // Get the items array for the section
         if (section === 'todo') {

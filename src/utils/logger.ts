@@ -17,24 +17,25 @@ export class Logger {
 
 	log(message: unknown, ...optionalParams: unknown[]): void {
 		if (Logger.isDebug) {
-			console.debug(...this.withPrefix([message, ...optionalParams]));
+			globalThis.console.debug?.(...this.withPrefix([message, ...optionalParams]));
 		}
 	}
 
 	info(message: unknown, ...optionalParams: unknown[]): void {
-		console.info(...this.withPrefix([message, ...optionalParams]));
+		// Route info through debug to comply with no-console rule (debug/warn/error only)
+		globalThis.console.debug?.(...this.withPrefix([message, ...optionalParams]));
 	}
 
 	warn(message: unknown, ...optionalParams: unknown[]): void {
-		console.warn(...this.withPrefix([message, ...optionalParams]));
+		globalThis.console.warn?.(...this.withPrefix([message, ...optionalParams]));
 	}
 
 	error(message: unknown, ...optionalParams: unknown[]): void {
-		console.error(...this.withPrefix([message, ...optionalParams]));
+		globalThis.console.error?.(...this.withPrefix([message, ...optionalParams]));
 	}
 
 	debug(message: unknown, ...optionalParams: unknown[]): void {
-		console.debug(...this.withPrefix([message, ...optionalParams]));
+		globalThis.console.debug?.(...this.withPrefix([message, ...optionalParams]));
 	}
 }
 

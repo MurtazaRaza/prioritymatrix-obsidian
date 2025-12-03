@@ -25,7 +25,7 @@ export function Quadrant({ quadrant, onItemClick, onPointerDragStart, onPointerD
                     onPointerDragStart={onPointerDragStart}
                     onPointerDragMove={onPointerDragMove}
                     onPointerDragEnd={onPointerDragEnd}
-                    from={quadrant.id as 'q1' | 'q2' | 'q3' | 'q4'}
+                    from={quadrant.id}
                     stateManager={stateManager}
                     app={app}
                 />

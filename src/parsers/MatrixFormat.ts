@@ -1,6 +1,6 @@
 import { App } from 'obsidian';
 import { Matrix } from '../types';
-import { parseMarkdown, ParsedMarkdown } from './parseMarkdown';
+import { parseMarkdown } from './parseMarkdown';
 import { astToUnhydratedMatrix } from './formats/matrix';
 import { hydrateMatrix } from './helpers/hydrateMatrix';
 import { createLogger } from '../utils/logger';

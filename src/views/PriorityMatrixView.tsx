@@ -1,6 +1,7 @@
+/* global window */
 import { TextFileView, WorkspaceLeaf, TFile, TFolder, Platform } from 'obsidian';
 import { render, h } from 'preact';
-import { Matrix, Item } from '../types';
+import { Matrix } from '../types';
 import { StateManager } from '../state/StateManager';
 import { useState } from '../state/useState';
 import { Matrix as MatrixComponent } from '../components/Matrix';
@@ -37,7 +38,11 @@ export class PriorityMatrixView extends TextFileView {
         return this.data;
     }
 
-    async setViewData(data: string, clear: boolean): Promise<void> {
+    setViewData(data: string, clear: boolean): void {
+        void this.handleSetViewData(data, clear);
+    }
+
+    private async handleSetViewData(data: string, clear: boolean): Promise<void> {
         const stackTrace = new Error().stack;
         log.log('setViewData called', {
             file: this.file?.path,
@@ -131,7 +136,7 @@ export class PriorityMatrixView extends TextFileView {
         // Clear any pending render timeout
         if (this.renderTimeout !== null) {
             log.log('Clearing pending render timeout');
-            clearTimeout(this.renderTimeout);
+            window.clearTimeout(this.renderTimeout);
         }
 
         // Render after a brief delay to ensure state is set, and debounce rapid calls
@@ -163,18 +168,18 @@ export class PriorityMatrixView extends TextFileView {
         log.log('onload() called', { file: this.file?.path });
         super.onload();
         
-        this.addAction('refresh-cw', 'Refresh TODOs', async () => {
-            await this.refreshTodos();
+        this.addAction('refresh-cw', 'Refresh TODOs', () => {
+            void this.refreshTodos();
         });
         
-        this.addAction('file-text', 'Open as Markdown', async () => {
+        this.addAction('file-text', 'Open as Markdown', () => {
             if (this.file) {
                 // Signal main.ts to suppress next auto-switch back to matrix
                 this.app.workspace.trigger('priority-matrix:suppress-next-autoswitch', this.file.path);
                 // Switch in the same tab/leaf
                 const leaf = this.leaf;
                 if (leaf) {
-                    await leaf.setViewState({
+                    void leaf.setViewState({
                         type: 'markdown',
                         state: { file: this.file.path },
                     });
@@ -187,9 +192,9 @@ export class PriorityMatrixView extends TextFileView {
         // Load data when view loads
         if (this.file) {
             log.log('Reading file in onload()');
-            this.app.vault.read(this.file).then(data => {
+            void this.app.vault.read(this.file).then(data => {
                 log.log('File read in onload(), calling setViewData with clear=true');
-                this.setViewData(data, true);
+                void this.setViewData(data, true);
             });
         }
     }
@@ -207,7 +212,7 @@ export class PriorityMatrixView extends TextFileView {
         this.isUnloading = true;
         
         if (this.renderTimeout !== null) {
-            clearTimeout(this.renderTimeout);
+            globalThis.clearTimeout(this.renderTimeout);
             this.renderTimeout = null;
         }
         render(null, this.contentEl);
@@ -284,7 +289,7 @@ export class PriorityMatrixView extends TextFileView {
             log.log('Reading file in onOpen()');
             const data = await this.app.vault.read(this.file);
             log.log('File read in onOpen(), calling setViewData with clear=true');
-            await this.setViewData(data, true);
+            this.setViewData(data, true);
         }
     }
 
@@ -304,7 +309,7 @@ export class PriorityMatrixView extends TextFileView {
             const fileStillExists = this.app.vault.getAbstractFileByPath(this.file.path) !== null;
             if (fileStillExists) {
                 log.log('File exists, saving before close');
-                await this.stateManager.save();
+                void this.stateManager.save();
             } else {
                 log.log('File does not exist (likely being deleted), skipping save');
             }
@@ -349,7 +354,7 @@ export class PriorityMatrixView extends TextFileView {
 
         // Scan for TODO files
         const results: string[] = [];
-        const tagRegex = new RegExp(`#${escapeRegExp(todoTag)}(?![\w-])`, 'i');
+        const tagRegex = new RegExp(`#${escapeRegExp(todoTag)}(?![A-Za-z0-9-])`, 'i');
 
         const walk = async (folder: TFolder) => {
             for (const child of folder.children) {
@@ -471,7 +476,7 @@ export class PriorityMatrixView extends TextFileView {
             
             // Update state and save
             this.stateManager.setState(matrix);
-            await this.stateManager.save();
+            void this.stateManager.save();
             
             // Re-render
             this.render();
@@ -505,7 +510,7 @@ export class PriorityMatrixView extends TextFileView {
 
                     // Save to disk
                     this.stateManager?.setState(updatedMatrix);
-                    this.stateManager?.save();
+                    void this.stateManager?.save();
                 },
             },
             matrix.data.settings
@@ -538,10 +543,10 @@ export class PriorityMatrixView extends TextFileView {
         let timeout: number | null = null;
         return () => {
             if (timeout !== null) {
-                clearTimeout(timeout);
+                window.clearTimeout(timeout);
             }
             timeout = window.setTimeout(() => {
-                this._initHeaderButtons();
+                void this._initHeaderButtons();
                 timeout = null;
             }, 10);
         };
