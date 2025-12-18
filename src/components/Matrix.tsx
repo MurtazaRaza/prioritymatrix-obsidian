@@ -1,4 +1,3 @@
-/* global document */
 import { h } from 'preact';
 import { useState, useCallback, useRef } from 'preact/hooks';
 import { Matrix as MatrixType, Item } from '../types';

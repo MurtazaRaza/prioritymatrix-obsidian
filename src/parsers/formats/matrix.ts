@@ -70,14 +70,12 @@ function extractTextFromChildren(children: NodeLike[]): string {
     return children.map(child => extractText(child)).join('');
 }
 
-type TaskListItem = ListItem & { checked?: boolean | null };
-
 /**
  * Convert a list item to an unhydrated item
  */
 function listItemToUnhydratedItem(listItem: ListItem, section: Section): UnhydratedItem | null {
     // Check if it's a task list item
-    const checked = (listItem as TaskListItem).checked === true;
+    const checked = listItem.checked === true;
     
     // Extract all text content from the list item (including from paragraph children)
     let titleRaw = '';

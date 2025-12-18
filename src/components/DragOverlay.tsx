@@ -1,4 +1,3 @@
-/* global window, document */
 import { useEffect, useRef } from 'preact/hooks';
 import { Coordinates } from '../utils/drag';
 

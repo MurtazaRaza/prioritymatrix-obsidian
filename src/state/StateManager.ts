@@ -47,7 +47,7 @@ export class StateManager {
     /**
      * Parse markdown and set state
      */
-    async getParsedMatrix(data: string): Promise<Matrix> {
+    getParsedMatrix(data: string): Matrix {
         const matrix = mdToMatrix(data, this.app, this.file.path);
         this.state = matrix;
         // Create new top-level reference so UI hooks detect the change

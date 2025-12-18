@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "priority-matrix",
+	"version": "1.0.2",
+	"description": "Create and manage priority matrix notes with auto detection of tasks from your vault.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -9,8 +9,8 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint \"src/**/*.{ts,tsx}\" main.ts"
 	},
-	"keywords": [],
-	"author": "",
+	"keywords": ["obsidian", "obsidian-plugin", "priority-matrix", "eisenhower-matrix", "task-management"],
+	"author": "MurtazaHere",
 	"license": "MIT",
 	"dependencies": {
 		"mdast-util-from-markdown": "^1.3.0",
@@ -26,6 +26,7 @@
 		"esbuild": "0.17.3",
 		"eslint": "^9.0.0",
 		"eslint-plugin-obsidianmd": "^0.1.9",
+		"globals": "^16.5.0",
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "^5.4.0",

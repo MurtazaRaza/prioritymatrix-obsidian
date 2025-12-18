@@ -225,7 +225,7 @@ export default class PriorityMatrixPlugin extends Plugin {
 
         // Also check when a markdown view is opened
         this.registerEvent(
-            this.app.workspace.on('file-open', async (file: TFile) => {
+            this.app.workspace.on('file-open', (file: TFile) => {
                 if (!file || file.extension !== 'md') return;
 
                 // Wait a bit for the view to be ready
@@ -293,7 +293,7 @@ export default class PriorityMatrixPlugin extends Plugin {
     }
 
     private async createPriorityMatrixInFolder(folder: TFolder) {
-        const filename = await this.getNextMatrixFilename(folder);
+        const filename = this.getNextMatrixFilename(folder);
         const content = await this.generateMatrixNoteContent(folder);
         // Handle root folder (empty path) correctly
         const filePath = folder.path ? `${folder.path}/${filename}` : filename;
@@ -302,7 +302,7 @@ export default class PriorityMatrixPlugin extends Plugin {
         new Notice('Priority matrix note created');
     }
 
-    private async getNextMatrixFilename(folder: TFolder): Promise<string> {
+    private getNextMatrixFilename(folder: TFolder): string {
         const base = 'Priority Matrix - ';
         let n = 1;
         while (true) {
@@ -476,9 +476,8 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        // eslint-disable-next-line obsidianmd/settings-tab/no-problematic-settings-headings
         new Setting(containerEl)
-            .setName('Scan options')
+            .setName('Scan')
             .setHeading();
 
         new Setting(containerEl)
@@ -525,9 +524,8 @@ class PriorityMatrixSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // eslint-disable-next-line obsidianmd/settings-tab/no-problematic-settings-headings
         new Setting(containerEl)
-            .setName('Behavior options')
+            .setName('Behavior')
             .setHeading();
 
         new Setting(containerEl)

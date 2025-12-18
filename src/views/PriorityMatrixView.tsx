@@ -1,4 +1,3 @@
-/* global window */
 import { TextFileView, WorkspaceLeaf, TFile, TFolder, Platform } from 'obsidian';
 import { render, h } from 'preact';
 import { Matrix } from '../types';
@@ -123,7 +122,7 @@ export class PriorityMatrixView extends TextFileView {
 
         // Parse and set state
         log.log('Parsing matrix from data...');
-        const matrix = await this.stateManager.getParsedMatrix(data);
+        const matrix = this.stateManager.getParsedMatrix(data);
         log.log('Parsed matrix:', {
             todoItems: matrix.data.banks.todo.length,
             q1Items: matrix.children.find(q => q.id === 'q1')?.children.length || 0,
@@ -293,7 +292,7 @@ export class PriorityMatrixView extends TextFileView {
         }
     }
 
-    async onClose(): Promise<void> {
+    onClose(): Promise<void> {
         log.log('onClose() called', {
             file: this.file?.path,
             hasStateManager: !!this.stateManager,
@@ -314,6 +313,8 @@ export class PriorityMatrixView extends TextFileView {
                 log.log('File does not exist (likely being deleted), skipping save');
             }
         }
+        
+        return Promise.resolve();
     }
 
     async refreshTodos(): Promise<void> {
@@ -520,7 +521,7 @@ export class PriorityMatrixView extends TextFileView {
     /**
      * Initialize header buttons (debounced)
      */
-    private _initHeaderButtons = async () => {
+    private _initHeaderButtons = () => {
         if (Platform.isPhone) return;
         if (!this.stateManager) return;
 

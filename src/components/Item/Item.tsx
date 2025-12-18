@@ -1,4 +1,3 @@
-/* global window, document */
 import { h } from 'preact';
 import { useRef, useEffect, useCallback, useMemo } from 'preact/hooks';
 import { App, Menu, Modal, Setting, Notice } from 'obsidian';
