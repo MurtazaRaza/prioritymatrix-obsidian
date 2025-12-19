@@ -267,6 +267,7 @@ export class PriorityMatrixView extends TextFileView {
                     matrix={matrix}
                     stateManager={this.stateManager!}
                     app={this.app}
+                    matrixFile={this.file!}
                 />
             );
         };
@@ -379,6 +380,16 @@ export class PriorityMatrixView extends TextFileView {
         // Exemption list: skip any paths present
         const exemptSet = new Set<string>((settings.exemptPaths || []).map(p => p.trim()).filter(Boolean));
         const filteredResults = results.filter(path => !exemptSet.has(path));
+
+        // Run diagnostics to clean up explicitlyAddedNotes (remove paths now within includePath)
+        const { cleanupExplicitlyAddedNotes } = await import('../utils/diagnostic');
+        const matrixFolderPath = this.file.parent?.path || null;
+        const cleanedSettings = cleanupExplicitlyAddedNotes(settings, matrixFolderPath);
+        
+        // Update matrix with cleaned settings if they changed
+        if (cleanedSettings.explicitlyAddedNotes.length !== settings.explicitlyAddedNotes.length) {
+            matrix.data.settings = cleanedSettings;
+        }
 
         // Get all existing item paths from all sections (TODO, Q1-Q4, DONE)
         const existingPaths = new Set<string>();
@@ -501,17 +512,22 @@ export class PriorityMatrixView extends TextFileView {
             this,
             {
                 onSettingsChange: (settings) => {
-                    const updatedMatrix: Matrix = {
-                        ...matrix,
-                        data: {
-                            ...matrix.data,
-                            settings: settings,
-                        },
-                    };
+                    void (async () => {
+                        // Run diagnostics to clean up explicitlyAddedNotes
+                        const diagnosticsSettings = await this.runExplicitlyAddedNotesDiagnostics(matrix, settings);
 
-                    // Save to disk
-                    this.stateManager?.setState(updatedMatrix);
-                    void this.stateManager?.save();
+                        const updatedMatrix: Matrix = {
+                            ...matrix,
+                            data: {
+                                ...matrix.data,
+                                settings: diagnosticsSettings,
+                            },
+                        };
+
+                        // Save to disk
+                        this.stateManager?.setState(updatedMatrix);
+                        void this.stateManager?.save();
+                    })();
                 },
             },
             matrix.data.settings
@@ -552,6 +568,18 @@ export class PriorityMatrixView extends TextFileView {
             }, 10);
         };
     })();
+
+    /**
+     * Diagnostics: remove entries from explicitlyAddedNotes that are now covered
+     * by the current includePath-based scan.
+     */
+    private async runExplicitlyAddedNotesDiagnostics(matrix: Matrix, settings: Matrix['data']['settings']): Promise<Matrix['data']['settings']> {
+        if (!this.file) return settings;
+
+        const { cleanupExplicitlyAddedNotes } = await import('../utils/diagnostic');
+        const matrixFolderPath = this.file.parent?.path || null;
+        return cleanupExplicitlyAddedNotes(settings, matrixFolderPath);
+    }
 }
 
 function escapeRegExp(s: string): string {

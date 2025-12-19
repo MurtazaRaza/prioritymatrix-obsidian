@@ -9,7 +9,7 @@ export class Logger {
 		return [this.prefix(), ...args];
 	}
 
-	private static isDebug = false;
+	private static isDebug = true;
 
 	static setDebug(debug: boolean) {
 		Logger.isDebug = debug;

@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: MatrixSettings = {
     autoRemoveTodoOnDone: false,
     enableStrikethroughOnDone: true,
     exemptPaths: [],
+    explicitlyAddedNotes: [],
 };
 
 export function parseSettingsFromJson(jsonStr: string): MatrixSettings {
@@ -17,6 +18,14 @@ export function parseSettingsFromJson(jsonStr: string): MatrixSettings {
         // Normalize empty string includePath to "/" for consistency
         if (settings.includePath === '') {
             settings.includePath = '/';
+        }
+        // Ensure explicitlyAddedNotes is always an array for backward compatibility
+        if (!Array.isArray(settings.explicitlyAddedNotes)) {
+            settings.explicitlyAddedNotes = [];
+        }
+        // Ensure exemptPaths is always an array
+        if (!Array.isArray(settings.exemptPaths)) {
+            settings.exemptPaths = [];
         }
         return settings;
     } catch {

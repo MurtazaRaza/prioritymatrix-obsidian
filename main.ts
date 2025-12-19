@@ -27,6 +27,7 @@ export default class PriorityMatrixPlugin extends Plugin {
     private pendingMatrixFiles = new Set<string>();
     private markdownViewsWithActions = new WeakSet<MarkdownView>();
     private suppressAutoSwitch = new Set<string>();
+    private pendingTimeouts = new Set<number>();
 
     async onload() {
         await this.loadSettings();
@@ -229,7 +230,8 @@ export default class PriorityMatrixPlugin extends Plugin {
                 if (!file || file.extension !== 'md') return;
 
                 // Wait a bit for the view to be ready
-                globalThis.setTimeout(() => {
+                const timeoutId = window.setTimeout(() => {
+                    this.pendingTimeouts.delete(timeoutId);
                     void (async () => {
                         const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
                         if (activeView && activeView.file?.path === file.path && !this.markdownViewsWithActions.has(activeView)) {
@@ -241,11 +243,17 @@ export default class PriorityMatrixPlugin extends Plugin {
                         }
                     })();
                 }, 100);
+                this.pendingTimeouts.add(timeoutId);
             })
         );
     }
 
     onunload() {
+        // Clear all pending timeouts
+        this.pendingTimeouts.forEach(timeoutId => {
+            window.clearTimeout(timeoutId);
+        });
+        this.pendingTimeouts.clear();
     }
 
     async loadSettings() {
@@ -336,7 +344,9 @@ export default class PriorityMatrixPlugin extends Plugin {
             todoTag: this.settings.todoTag,
             maxFiles: this.settings.maxFiles,
             autoRemoveTodoOnDone: this.settings.autoRemoveTodoOnDone,
-            enableStrikethroughOnDone: this.settings.enableStrikethroughOnDone
+            enableStrikethroughOnDone: this.settings.enableStrikethroughOnDone,
+            explicitlyAddedNotes: [],
+            exemptPaths: [],
         };
 
         const lines: string[] = [];

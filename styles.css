@@ -94,6 +94,14 @@ If your plugin does not need CSS, delete this file.
   overflow: hidden;
 }
 
+/* Highlight drop target when dragging external notes into TODO bank */
+.priority-matrix-view .pmx-bank.pmx-todo.pmx-drop-target {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent), 0 0 8px rgba(0, 0, 0, 0.2);
+  background-color: color-mix(in srgb, var(--background-secondary) 80%, var(--interactive-accent) 20%);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
 .priority-matrix-view .pmx-collapsed {
   display: none;
 }

@@ -5,7 +5,7 @@ import { TodoBank } from './Banks/TodoBank';
 import { DoneBank } from './Banks/DoneBank';
 import { Items } from './Item/Items';
 import { StateManager } from '../state/StateManager';
-import { App } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { DragOverlay } from './DragOverlay';
 import { Coordinates } from '../utils/drag';
 
@@ -13,9 +13,10 @@ interface MatrixProps {
     matrix: MatrixType | null;
     stateManager: StateManager;
     app: App;
+    matrixFile: TFile;
 }
 
-export function Matrix({ matrix, stateManager, app }: MatrixProps) {
+export function Matrix({ matrix, stateManager, app, matrixFile }: MatrixProps) {
     const [todoCollapsed, setTodoCollapsed] = useState(false);
     const [doneCollapsed, setDoneCollapsed] = useState(false);
 
@@ -399,6 +400,7 @@ export function Matrix({ matrix, stateManager, app }: MatrixProps) {
                         onPointerDragEnd={handlePointerDragEnd}
                         stateManager={stateManager}
                         app={app}
+                        matrixFile={matrixFile}
                     />
                 </div>
 

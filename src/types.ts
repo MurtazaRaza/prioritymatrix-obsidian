@@ -8,6 +8,11 @@ export interface MatrixSettings {
     autoRemoveTodoOnDone: boolean;
     enableStrikethroughOnDone: boolean;
     exemptPaths: string[];
+    /**
+     * Vault-relative note paths that are explicitly added to this matrix,
+     * even if they fall outside the includePath.
+     */
+    explicitlyAddedNotes: string[];
 }
 
 export interface ItemMetadata {
