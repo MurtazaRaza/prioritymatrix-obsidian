@@ -321,16 +321,16 @@ export class SettingsManager {
                     });
             });
 
+        // Explicitly Added Notes
         new Setting(contentEl)
             .setName('Explicitly added notes')
-            .setDesc('Notes that were manually added via drag-and-drop outside the include path (one per line). These are automatically cleaned up when they fall within the include path.')
+            .setDesc('Notes manually added outside the include path (one per line)')
             .addTextArea((text) => {
                 const [value, globalValue] = this.getSetting('explicitlyAddedNotes', local);
                 const notes = value || globalValue || [];
-                text.inputEl.placeholder = 'Paths will appear here when you drag notes from outside the include path';
+                text.inputEl.placeholder = 'Enter paths to explicitly include, one per line';
                 text.inputEl.value = Array.isArray(notes) ? notes.join('\n') : '';
                 text.inputEl.rows = 4;
-                text.inputEl.readOnly = false; // Allow manual editing
 
                 text.onChange((val) => {
                     const paths = val
@@ -355,7 +355,7 @@ export class SettingsManager {
                         const explicitTextArea = textAreas[1];
                         if (explicitTextArea) {
                             explicitTextArea.value = Array.isArray(defaultValue) ? defaultValue.join('\n') : '';
-                            explicitTextArea.placeholder = 'Paths will appear here when you drag notes from outside the include path';
+                            explicitTextArea.placeholder = 'Enter paths to explicitly include, one per line';
                         }
 
                         this.applySettingsUpdate((current) => ({

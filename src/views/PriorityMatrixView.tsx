@@ -580,7 +580,7 @@ export class PriorityMatrixView extends TextFileView {
         const matrixFolderPath = this.file.parent?.path || null;
         return cleanupExplicitlyAddedNotes(settings, matrixFolderPath);
     }
-}
+    }
 
 function escapeRegExp(s: string): string {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

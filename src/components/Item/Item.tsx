@@ -337,73 +337,120 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                             new Notice('Item removed');
                             return;
                         }
-                        const modal = new TodoLinkedRemoveModal(app,
-                            () => {
-                                void (async () => {
-                                // Remove #TODO from linked note
-                                const file = item.data.metadata.fileAccessor;
-                                if (!file) {
-                                    new Notice('Could not resolve file');
-                                    return;
-                                }
-
-                                try {
-                                    // Get the TODO tag from matrix settings
-                                    const current = stateManager.getState();
-                                    if (!current) {
-                                        new Notice('Could not access matrix state');
-                                        return;
-                                    }
-                                    const todoTag = current.data.settings.todoTag || 'TODO';
-
-                                    // Read file content
-                                    const content = await app.vault.read(file);
-
-                                    // Create regex to match the tag (case-insensitive, with negative lookahead)
-                                    const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                    const tagPattern = `#${escapeRegExp(todoTag)}(?![\\w-])`;
-                                    const tagRegex = new RegExp(tagPattern, 'gi');
-
-                                    // Remove all instances of the tag
-                                    let newContent = content.replace(tagRegex, '');
-
-                                    // Clean up any resulting double spaces (but preserve line breaks)
-                                    newContent = newContent.replace(/[ \t]{2,}/g, ' ');
-
-                                    // Save the modified content
-                                    await app.vault.modify(file, newContent);
-
-                                    // Remove the bubble from the matrix
-                                    stateManager.removeItem(item.id, section);
-                                    void stateManager.save();
-
-                                    new Notice(`Removed #${todoTag} from note and removed from matrix`);
-                                } catch (error) {
-                                    log.error('Error removing TODO tag:', error);
-                                    new Notice('Error removing TODO tag: ' + (error instanceof Error ? error.message : String(error)));
-                                }
-                                })();
-                            },
-                            () => {
-                                // Add to exemption list and remove item
-                                const filePath = item.data.metadata.fileAccessor?.path;
-                                if (!filePath) {
-                                    new Notice('Could not resolve file path for exemption');
-                                    return;
-                                }
-                                const current = stateManager.getState();
-                                if (!current) return;
-                                const settings = current.data.settings;
-                                const list = new Set<string>((settings.exemptPaths || []).map(p => p.trim()).filter(Boolean));
-                                list.add(filePath);
-                                settings.exemptPaths = Array.from(list);
-                                stateManager.setState(current);
+                        
+                        // Check if the linked file has a TODO tag
+                        // If not, it's likely an explicitly added note - just remove it
+                        void (async () => {
+                            const file = item.data.metadata.fileAccessor;
+                            if (!file) {
                                 stateManager.removeItem(item.id, section);
                                 void stateManager.save();
-                                new Notice('Added to exemption list and removed from matrix');
+                                new Notice('Item removed');
+                                return;
                             }
-                        );
-                        modal.open();
+
+                            try {
+                                // Get the TODO tag from matrix settings
+                                const current = stateManager.getState();
+                                if (!current) {
+                                    stateManager.removeItem(item.id, section);
+                                    void stateManager.save();
+                                    new Notice('Item removed');
+                                    return;
+                                }
+                                const todoTag = current.data.settings.todoTag || 'TODO';
+
+                                // Read file content to check for TODO tag
+                                const content = await app.vault.read(file);
+                                const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                const tagPattern = `#${escapeRegExp(todoTag)}(?![\\w-])`;
+                                const tagRegex = new RegExp(tagPattern, 'gi');
+                                const hasTodoTag = tagRegex.test(content);
+
+                                // If no TODO tag found, just remove it (it's an explicitly added note)
+                                if (!hasTodoTag) {
+                                    stateManager.removeItem(item.id, section);
+                                    void stateManager.save();
+                                    new Notice('Item removed');
+                                    return;
+                                }
+
+                                // If it has a TODO tag, show the modal with options
+                                const modal = new TodoLinkedRemoveModal(app,
+                                    () => {
+                                        void (async () => {
+                                            // Remove #TODO from linked note
+                                            const file = item.data.metadata.fileAccessor;
+                                            if (!file) {
+                                                new Notice('Could not resolve file');
+                                                return;
+                                            }
+
+                                            try {
+                                                // Get the TODO tag from matrix settings
+                                                const current = stateManager.getState();
+                                                if (!current) {
+                                                    new Notice('Could not access matrix state');
+                                                    return;
+                                                }
+                                                const todoTag = current.data.settings.todoTag || 'TODO';
+
+                                                // Read file content
+                                                const content = await app.vault.read(file);
+
+                                                // Create regex to match the tag (case-insensitive, with negative lookahead)
+                                                const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                                const tagPattern = `#${escapeRegExp(todoTag)}(?![\\w-])`;
+                                                const tagRegex = new RegExp(tagPattern, 'gi');
+
+                                                // Remove all instances of the tag
+                                                let newContent = content.replace(tagRegex, '');
+
+                                                // Clean up any resulting double spaces (but preserve line breaks)
+                                                newContent = newContent.replace(/[ \t]{2,}/g, ' ');
+
+                                                // Save the modified content
+                                                await app.vault.modify(file, newContent);
+
+                                                // Remove the bubble from the matrix
+                                                stateManager.removeItem(item.id, section);
+                                                void stateManager.save();
+
+                                                new Notice(`Removed #${todoTag} from note and removed from matrix`);
+                                            } catch (error) {
+                                                log.error('Error removing TODO tag:', error);
+                                                new Notice('Error removing TODO tag: ' + (error instanceof Error ? error.message : String(error)));
+                                            }
+                                        })();
+                                    },
+                                    () => {
+                                        // Add to exemption list and remove item
+                                        const filePath = item.data.metadata.fileAccessor?.path;
+                                        if (!filePath) {
+                                            new Notice('Could not resolve file path for exemption');
+                                            return;
+                                        }
+                                        const current = stateManager.getState();
+                                        if (!current) return;
+                                        const settings = current.data.settings;
+                                        const list = new Set<string>((settings.exemptPaths || []).map(p => p.trim()).filter(Boolean));
+                                        list.add(filePath);
+                                        settings.exemptPaths = Array.from(list);
+                                        stateManager.setState(current);
+                                        stateManager.removeItem(item.id, section);
+                                        void stateManager.save();
+                                        new Notice('Added to exemption list and removed from matrix');
+                                    }
+                                );
+                                modal.open();
+                            } catch (error) {
+                                log.error('Error checking TODO tag:', error);
+                                // On error, just remove the item
+                                stateManager.removeItem(item.id, section);
+                                void stateManager.save();
+                                new Notice('Item removed');
+                            }
+                        })();
                     });
             });
 
