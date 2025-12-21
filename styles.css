@@ -173,6 +173,17 @@ If your plugin does not need CSS, delete this file.
   font-size: 0.9em;
 }
 
+.priority-matrix-settings-modal textarea.priority-matrix-path-input {
+  font-size: 0.65em;
+  overflow-x: auto;
+  overflow-y: auto;
+  white-space: pre;
+  word-wrap: normal;
+  min-height: 80px;
+  max-height: 80px;
+  height: 80px;
+}
+
 .priority-matrix-view .pmx-cell {
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--input-radius);

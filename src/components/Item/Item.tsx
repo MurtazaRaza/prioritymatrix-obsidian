@@ -42,6 +42,27 @@ class TodoLinkedRemoveModal extends Modal {
 
 const log = createLogger('ItemComponent');
 
+/**
+ * Remove a file path from explicitlyAddedNotes if it exists
+ */
+function removeFromExplicitlyAddedNotes(stateManager: StateManager, filePath: string): void {
+    const current = stateManager.getState();
+    if (!current) return;
+    
+    const settings = current.data.settings;
+    const existingExplicit = (settings.explicitlyAddedNotes || []).map(p => p.trim()).filter(Boolean);
+    
+    // Check if the file path is in explicitlyAddedNotes
+    const index = existingExplicit.findIndex(p => p === filePath);
+    if (index !== -1) {
+        // Remove it from the array
+        existingExplicit.splice(index, 1);
+        settings.explicitlyAddedNotes = existingExplicit;
+        stateManager.setState(current);
+        log.log('Removed from explicitlyAddedNotes:', filePath);
+    }
+}
+
 export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointerDragMove, onPointerDragEnd, from, stateManager, app }: ItemProps) {
     const itemElementRef = useRef<HTMLElement | null>(null);
     const isDraggingRef = useRef(false);
@@ -369,6 +390,8 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
 
                                 // If no TODO tag found, just remove it (it's an explicitly added note)
                                 if (!hasTodoTag) {
+                                    // Remove from explicitlyAddedNotes if present
+                                    removeFromExplicitlyAddedNotes(stateManager, file.path);
                                     stateManager.removeItem(item.id, section);
                                     void stateManager.save();
                                     new Notice('Item removed');
@@ -412,6 +435,9 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                                                 // Save the modified content
                                                 await app.vault.modify(file, newContent);
 
+                                                // Remove from explicitlyAddedNotes if present
+                                                removeFromExplicitlyAddedNotes(stateManager, file.path);
+
                                                 // Remove the bubble from the matrix
                                                 stateManager.removeItem(item.id, section);
                                                 void stateManager.save();
@@ -437,6 +463,10 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                                         list.add(filePath);
                                         settings.exemptPaths = Array.from(list);
                                         stateManager.setState(current);
+                                        
+                                        // Remove from explicitlyAddedNotes if present
+                                        removeFromExplicitlyAddedNotes(stateManager, filePath);
+                                        
                                         stateManager.removeItem(item.id, section);
                                         void stateManager.save();
                                         new Notice('Added to exemption list and removed from matrix');
@@ -446,6 +476,11 @@ export function ItemComponent({ item, onItemClick, onPointerDragStart, onPointer
                             } catch (error) {
                                 log.error('Error checking TODO tag:', error);
                                 // On error, just remove the item
+                                // Remove from explicitlyAddedNotes if present
+                                const filePath = item.data.metadata.fileAccessor?.path;
+                                if (filePath) {
+                                    removeFromExplicitlyAddedNotes(stateManager, filePath);
+                                }
                                 stateManager.removeItem(item.id, section);
                                 void stateManager.save();
                                 new Notice('Item removed');

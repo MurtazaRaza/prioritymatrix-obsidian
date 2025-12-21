@@ -289,6 +289,7 @@ export class SettingsManager {
                 text.inputEl.placeholder = 'Enter paths to exclude, one per line';
                 text.inputEl.value = Array.isArray(paths) ? paths.join('\n') : '';
                 text.inputEl.rows = 4;
+                text.inputEl.addClass('priority-matrix-path-input');
 
                 text.onChange((val) => {
                     const paths = val
@@ -331,6 +332,7 @@ export class SettingsManager {
                 text.inputEl.placeholder = 'Enter paths to explicitly include, one per line';
                 text.inputEl.value = Array.isArray(notes) ? notes.join('\n') : '';
                 text.inputEl.rows = 4;
+                text.inputEl.addClass('priority-matrix-path-input');
 
                 text.onChange((val) => {
                     const paths = val
