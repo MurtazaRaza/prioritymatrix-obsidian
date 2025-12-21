@@ -1,6 +1,6 @@
 {
 	"name": "priority-matrix",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Create and manage priority matrix notes with auto detection of tasks from your vault.",
 	"main": "main.js",
 	"scripts": {
