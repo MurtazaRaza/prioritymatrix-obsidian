@@ -1,7 +1,7 @@
 {
 	"id": "priority-matrix",
 	"name": "Priority Matrix",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"minAppVersion": "1.2.3",
 	"description": "Create and manage priority matrix notes with auto detection of tasks from your vault.",
 	"author": "MurtazaHere",
