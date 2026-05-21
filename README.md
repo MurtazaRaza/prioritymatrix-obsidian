@@ -17,8 +17,6 @@ A plugin made for [Obsidian](https://obsidian.md/)
 - **Markdown Integration**: Matrix notes are stored as markdown files, fully compatible with Obsidian's native features
 
 ## Installation
-
-(Not yet released there)
 ### From Obsidian Community Plugins
 
 1. Open **Settings** → **Community plugins**
@@ -84,7 +82,7 @@ Priority Note specific settings is where you can specify individual note setting
 
 ## Requirements
 
-- Obsidian v0.15.0 or higher
+- Obsidian v1.2.3 or higher
 - No additional dependencies required
 
 ## Troubleshooting
